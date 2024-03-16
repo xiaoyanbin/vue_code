@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+function mountComponent(vnode, container,anchor) {
+  const componentOptions = vnode.type
+  const {render , data,beforeCreate, created, beforeMount, mounted,beforeUpdate,updated, } = componentOptions
+  beforeCreate && beforeCreate()
+ 
+  const state = reactive(data())
+  
+  // 定义组件实例，
+  const instance = {
+    state,
+    isMounted: false,
+    subTree: null,
+  }
+
+  created && created.call(state)
+  // 将组件实例挂载到vnode上
+  vnode.component = instance
+
+  // 将组件的render函数调用包装到effect 内
+  effect(()=>{
+
+    const subTree = render.call(state, state)
+    if(!instance.isMounted){
+      beforeMount && beforeMount.call(state)
+      // 第一次挂载 传入null
+      patch(null,subTree, container, anchor)
+      // 更新是不会到这里
+      instance.isMounted = true
+      mounted && mounted.call(state)
+    }else{
+      // 挂载
+      beforeUpdate && beforeUpdate.call(state)
+      // instance.subTree 是上一次的subTree  subTree是新的subTree container是容器 anchor是锚点 
+      patch(instance.subTree,subTree, container, anchor)
+      updated && updated.call(state)
+    }
+    // 更新instance.subTree
+    instance.subTree = subTree
+  },{scheduler:queueJob})
+
+
+
+}
+</script>
+</html>

@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+function effect(fn, options = {}){
+  const effectFn = () => {
+      cleanup(effectFn)
+      activeEffect = effectFn
+      // 在调用副作用函数之前，将其添加到effectStack中
+      effectStack.push(effectFn)
+      fn()
+      // 在调用副作用函数之后，将其从effectStack中移除
+      effectStack.pop()
+      activeEffect = effectStack[effectStack.length - 1]
+
+  }
+  // 将options属性添加到effectFn上
+  effectFn.options = options
+  // 将effectFn添加到activeEffect上
+  effectFn.deps = []
+  effectFn()
+   
+}
+
+// 直接调用用户传递的调度器函数
+
+function trigger(target,key){
+  const depsMap = targetMap.get(target)
+  if(!depsMap) return
+  const effects = depsMap.get(key)
+  const effectsToRun = new Set()
+  effects && effects.forEach(effect => {
+    effectsToRun.add(effect)
+  })
+  effectsToRun.forEach(effectFn => {
+    // 如果effectFn有调度器函数，就调用调度器函数
+    if(effectFn.options.scheduler){
+      effectFn.options.scheduler(effectFn)
+    }else{
+      effectFn()
+    }
+  })
+}
+
+
+// 不包含过渡状态的副作用函数
+
+const jobQueue = new Set()
+const p = Promise.resolve()
+
+let isFlushing = false
+
+function flushJob(){
+  if(isFlushing) return
+  isFlushing = true
+  p.then(() => {
+    for(const job of jobQueue){
+      job()
+    }
+    
+  }).finally(() => {
+    isFlushing = false
+  })
+}
+
+effect(() => {
+  console.log(obj.foo)
+}, {
+  scheduler(fn){
+    jobQueue.add(fn)
+    flushJob()
+  }
+})
+</script>
+</html>

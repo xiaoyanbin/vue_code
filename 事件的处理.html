@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script>
+    const vnode = {
+      type: 'div',
+      props: {
+        onClick:() => {console.log('click')},
+      }
+    }
+
+    function patchProp(el,key,prevValue,nextValue){
+      if(/^on/.test(key)){
+        const eventName = key.slice(2).toLowerCase()
+        prevValue && el.removeEventListener(eventName,prevValue)
+        el.addEventListener(eventName,nextValue)
+      }else if (key === 'class'){
+        // el.addEventListener('click',nextValue)
+      }
+    }
+    // 移除事件开销比较大 绑定一个伪造的事件处理函数，然后把真正的事件处理函数设置为invoker.value
+    function patchProps(el,props,prevValue,nextValue){
+      if(/^on/.test(key)){
+        const eventName = key.slice(2).toLowerCase()
+        let invoker = el._vei || (el._vei = {})
+        if(nextValue){
+          if(!invoker){
+            invoker = el._vei = (e) => {
+              invoker.value(e)
+            }
+            invoker.value = nextValue
+            el.addEventListener(eventName,invoker)
+          } else {
+            invoker.value = nextValue
+          }
+          
+        }else if(invoker){
+          el.removeEventListener(eventName,invoker)
+          el._vei = null
+
+        }
+    }
+  }
+
+
+  </script>
+</body>
+</html>

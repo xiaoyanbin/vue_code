@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+// 展示打印后的节点树
+
+function compile(template){
+  const ast = parse(template)
+  transform(ast)
+  return generate(ast.jsNode)
+}
+
+
+function generate(node){
+  const context = {
+    code: '',
+    push(code){
+      context.code += code
+    }
+  }
+  genNode(node,context)
+  return context.code
+}
+
+function generate(node){
+  const context = {
+    code: '',
+    push(code){
+      context.code += code
+    },
+    currentIndent: 0,
+    newline(){
+      context.code +='\n' + `  `.repeat(context.currentIndent)
+    },
+    // 用来增加缩进
+    indent(){
+      context.currentIndent++
+      context.newline()
+    },
+    deIndent(){
+      context.currentIndent--
+      context.newline()
+    }
+  }
+  genNode(node,context)
+  return context.code
+}
+
+
+function genNode(node,context){
+  switch(node.type){
+    // 生成函数代码
+    case 'FunctionDecl':
+      genFunctionDecl(node,context)
+      break
+    // 生成js代码  
+    case 'ReturnStatement':
+      genReturnStatement(node,context)
+      break
+    // 生成调用表达式类型的js代码  
+    case 'CallExpression':
+      genCallExpression(node,context)
+      break
+    // 生成标识符类型的js代码  
+    case 'StringLiteral':
+      genStringLiteral(node,context)
+      break
+    // 生成标识符类型的js代码  
+    case 'ArrayExpression':
+      genArrayExpression(node,context)
+      break
+  }
+}
+
+
+function genFunctionDecl(node,context){
+  context.push(`function ${node.id.name}(`)
+
+  for(let i = 0; i < node.params.length; i++){
+    const param = node.params[i]
+    context.push(param.name)
+    if(i < node.params.length - 1){
+      context.push(',')
+    }
+  }
+  context.push('){')
+  context.indent()
+  for(let child of node.body){
+    genNode(child,context)
+  }
+  context.deIndent()
+  context.push('}')
+}
+
+function genNodeList(node,context){
+  for(let i = 0; i < node.length; i++){
+    genNode(node[i],context)
+    if(i < node.length - 1){
+      context.push(',')
+    }
+  }
+}
+
+
+function genNode(node,context){
+  if(node.type === 'Element'){
+    context.push(`<${node.tag}`)
+    for(let key in node.props){
+      context.push(` ${key}="${node.props[key]}"`)
+    }
+    context.push('>')
+    if(node.children){
+      for(let child of node.children){
+        genNode(child,context)
+      }
+    }
+    context.push(`</${node.tag}>`)
+  }else{
+    context.push(node.content)
+  }
+}
+
+
+function genArrayExpression(node,context){
+  context.push('[')
+  genNodeList(node.elements,context)
+  context.push(']')
+}
+
+function genReturnStatement(node,context){
+  context.push('return ')
+  genNode(node.argument,context)
+  context.push(';')
+}
+
+function genStringLiteral(node,context){
+  context.push(`'${node.value}'`)
+}
+
+function genCallExpression(node,context){
+  const { push } = context
+  const { callee,arguments:args } = node
+  push(callee.name + '(')
+  genNodeList(args,context)
+  push(')')
+}
+
+</script>
+</html>

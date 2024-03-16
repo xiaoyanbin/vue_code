@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+function mountComponent(vnode, container,anchor) {
+  const componentOptions = vnode.type
+  const {render , data, props: propsOption,beforeCreate, created, beforeMount, mounted,beforeUpdate,updated, } = componentOptions
+  
+  beforeCreate && beforeCreate()
+  const state = reactive(data())
+  const [props, attrs] = resolveProps(propsOption,vnode.props)
+
+  // 定义组件实例，
+  const instance = {
+    state,
+    props: shallowReactive(props),
+    isMounted: false,
+    subTree: null,
+  }
+  vnode.component = instance
+
+  function resolveProps(options, propsData){
+    const props = {}
+    const attrs = {}
+    // 遍历propsData
+    for(const key in propsData){
+      if(option[key]){
+        props[key] = propsData[key]
+      }else{
+        attrs[key] = propsData[key]
+      }
+    }
+    return [props,attrs]
+  }
+
+
+  // 将组件的render函数调用包装到effect 内
+  effect(()=>{
+    const subTree = render.call(state, state)
+    if(!instance.isMounted){
+      // 更新
+      patch(instance.subTree,subTree, container, anchor)
+      instance.isMounted = true
+      mounted && mounted.call(state)
+    }else{
+      // 挂载
+      beforeUpdate && beforeUpdate.call(state)
+      patch(instance.subTree,subTree, container, anchor)
+      updated && updated.call(state)
+    }
+    instance.subTree = subTree
+  },{scheduler:queueJob})
+
+  const subTree = render.call(state, state)
+  patch(null,subTree, container, anchor)
+  console.log('组件挂载')
+
+}
+
+
+function patch(n1, n2, container, anchor){
+  if(n1 && n1.type !== n2.type){
+    // 挂载
+    unmount(n1)
+    n1 = null
+  }
+  const {type, shapeFlag} = n2
+  if(typeof type === 'string'){
+    processElement(n1, n2, container, anchor)
+  }else if(shapeFlag & ShapeFlags.STATEFUL_COMPONENT){
+    processComponent(n1, n2, container, anchor)
+  }else if(typeof type === 'object'){
+    if(!n1){
+      mountComponent(n2, container, anchor)
+    } else {
+      patchComponent(n1, n2, anchor)
+    }
+  }
+}
+
+function patchComponent(n1, n2, container, anchor){
+  const instance = (n2.component = n1 && n1.component)
+  const {props} = instance
+  // hasPropsChanged 判断props是否发生变化
+  if(hasPropsChanged(n1.props, n2.props)){
+    const [nextProps, nextAttr] = resolveProps(n2.type.props,n2.props)
+    // 更新props
+    for(const k in nextProps){
+      props[k] = nextProps[k]
+    }
+    // 删除不存在的props
+    for(const k in props){
+      if(!nextProps[k]){
+        delete props[k]
+      }
+    }
+  }
+}
+
+// 检查是否变化的函数
+function hasPropsChanged(prevProps, nextProps){
+  if(prevProps === nextProps) return false
+  if(!prevProps || !nextProps) return true
+  const prevKeys = Object.keys(prevProps)
+  const nextKeys = Object.keys(nextProps)
+  if(prevKeys.length !== nextKeys.length) return true
+  for(let i = 0; i < prevKeys.length; i++){
+    const key = prevKeys[i]
+    if(prevProps[key] !== nextProps[key]){
+      return true
+    }
+  }
+  return false
+}
+
+function mountComponent(vnode, container,anchor) {
+  const componentOptions = vnode.type
+  const {render , data, props: propsOption,beforeCreate, created, beforeMount, mounted,beforeUpdate,updated, } = componentOptions
+  
+  beforeCreate && beforeCreate()
+  const state = reactive(data())
+  const [props, attrs] = resolveProps(propsOption,vnode.props)
+
+ 
+
+  // 定义组件实例，
+  const instance = {
+    state,
+    props: shallowReactive(props),
+    isMounted: false,
+    subTree: null,
+  }
+  vnode.component = instance
+
+  // 创建渲染上下文对象，本质上是组件实例的代理
+  const renderContext = new Proxy(instance, {
+    get(target, key, receiver){
+      const {state, props} = target
+      if(state && key in state){
+        return state[key]
+      }else if(props && key in props){
+        return props[key]
+      }else{
+        console.log('key',key)
+      }
+
+    },
+    set(target, key, value,reactive){
+      const {state, props} = instance
+
+      if(state && key in state){
+        state[key] = value
+      }else if(key in props){
+         console.warn(`Attempting to mutate prop "${key}". Props are readonly.`)
+      }else{
+        console.error(`Set on undefined property ${key}`)
+      }
+    }
+  })
+  // 生命周期钩子函数
+  created && created.call(renderContext)
+
+}
+</script>
+</html>

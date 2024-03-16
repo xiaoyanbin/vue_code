@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+effect(function effectFn1(){
+  console.log('effectFn1')
+  effect(function effectFn2(){
+    console.log('effectFn2')
+    effect(function effectFn3(){
+      console.log('effectFn3')
+    })
+  })
+})
+
+let activeEffect
+const effectStack = []
+function effect(fn){
+  const effectFn = () => {
+    cleanup(effectFn)
+    activeEffect = effectFn
+    effectStack.push(effectFn)
+    fn()
+    effectStack.pop()
+    activeEffect = effectStack[effectStack.length - 1]
+  }
+  effectFn.deps = []
+  // 执行副作用函数
+  effectFn()
+}
+
+// 避免无限循环
+
+function trigger(target,key){
+  const depsMap = targetMap.get(target)
+  if(!depsMap) return
+  const dep = depsMap.get(key)
+
+  const effectsToRun = new Set()
+  effects && effects.forEach(effect => {
+    // 如果不是当前激活的副作用函数，就添加到effectsToRun中
+    if(effect !== activeEffect){
+      effectsToRun.add(effect)
+    }
+  })
+  effectsToRun.forEach(effect => {
+    effect()
+  })
+
+  
+}
+
+
+
+
+
+</script>
+</html>

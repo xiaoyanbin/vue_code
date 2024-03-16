@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script>
+    const renderer = createRenderer({
+      createElement(type){
+        return document.createElement(type)
+      },
+      insert(child,parent,anchor){
+        parent.insertBefore(child,anchor)
+      },
+      remove(child){
+        child.parent.removeChild(child)
+      },
+      setElementText(el,text){
+        el.textContent = text
+      }
+    })
+  </script>
+</body>
+</html>

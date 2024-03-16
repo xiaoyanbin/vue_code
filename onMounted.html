@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+// 1.定义一个全局变量currentInstance
+let currentInstance = null
+// 2.定义一个setCurrentInstance方法，用于设置currentInstance
+function setCurrentInstance(instance){
+  currentInstance = instance
+}
+
+function mountComponent(vnode,container,anchor){
+  const  componentOptions = vnode.type
+  const instance = {
+    vnode,
+    type:componentOptions,
+    props:resolveProps(vnode.props),
+    proxy: new Proxy({},{}),
+    emit:()=>{},
+    ctx:{},
+    setupState:{},
+    isMounted:false,
+    render:()=>{},
+    update:()=>{},
+    renderUpdate:()=>{},
+    effects:[],
+    subTree:null,
+    umount:()=>{}
+  }
+  const setupContext = {attrs:vnode.props, slots:{}, emit:instance.emit}
+
+  // 3.调用setCurrentInstance方法，设置currentInstance
+  setCurrentInstance(instance)
+  // 4.调用setup方法，获取setup返回的数据
+  const setupResult = componentOptions.setup(instance.props,setupContext)
+  // 5.判断setupResult的类型，如果是对象，则将对象赋值给instance.setupState，如果是函数，则将函数赋值给instance.render
+  if(typeof setupResult === 'object'){
+    instance.setupState = setupResult
+  }else if(typeof setupResult === 'function'){
+    instance.render = setupResult
+  }
+  // 6.调用renderComponent方法，渲染组件
+  renderComponent(instance,vnode,container,anchor)
+
+  setCurrentInstance(null)
+}
+
+function onMounted(fn){
+  // 7.判断currentInstance是否存在，如果存在则调用effects.push方法，将fn添加到effects中
+  if(currentInstance){
+    currentInstance.effects.push(fn)
+  }else {
+    console.error('onMounted must be called in setup')
+  }
+}
+
+function mountComponent(vnode,container,anchor){
+  const instance = {
+    // ...
+    // 8.在组件挂载后，调用effects中的方法
+    umount(){
+      instance.effects.forEach(effect=>effect())
+    }
+  }
+  // ...
+  effect(()=>{
+    const subTree = render.call(renderContext,renderContext)
+    // ...
+    if(!instance.isMounted){
+      // ...
+
+      instance.isMounted = true
+      instance.mounted && instance.mounted.forEach(fn=>fn.call(renderContext))
+      // ...
+      // instance.umount()
+    }else{
+      // ...
+    }
+    instance.subTree = subTree
+  },{scheduler:queueJob})
+}
+</script>
+</html>

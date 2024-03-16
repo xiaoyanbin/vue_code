@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+<div id="app"></div>
+
+</body>
+<script lang="ts">
+
+
+// 断开副作用函数和代理对象的联系
+
+
+// 创建一个收集副作用的容器
+const bucket = new WeakMap()
+let activeEffect
+let num = 0
+let h = 0
+let temp1,temp2
+let effectStack = []
+const data = {foo: 4,bar:2,name: 'zhangsan',a:[1,2,3]}
+// 1.创建一个响应式对象
+const obj = new Proxy(data, {
+  get(target, key){
+    if(!activeEffect) return  Reflect.get(target, key)
+    track(target,key)
+    return Reflect.get(target, key)
+  },
+  set(target, key, value){
+    Reflect.set(target, key, value)
+    trigger(target,key)
+  }
+})
+// 副作用函数
+function effect(fn,options ={}){
+  const effectFn = () => {
+    // 调用cleanup函数完成清除工作,清楚前面的副作用函数 activeEffect.deps
+    cleanup(effectFn)
+    // 嵌套执行时，内层副作用函数会覆盖外层副作用函数
+    activeEffect = effectFn
+    effectStack.push(effectFn)
+    const res = fn()
+    effectStack.pop()
+    activeEffect = effectStack[effectStack.length - 1]
+    return res
+  }
+  // 绑定副作用函数的配置项
+  effectFn.options = options
+  effectFn.deps = []
+  // 如果lazy为false,就立即执行effectFn
+  if(!options.lazy){
+    effectFn()
+  }
+  return effectFn
+  
+}
+function cleanup(effect){
+  effect.deps.forEach(dep => {
+    // deps 是依赖集合
+    dep.delete(effect)
+  })
+  // 最后需要重置effectFn.deps  
+  effect.deps.length = 0
+}
+
+
+
+
+
+function watch(source,cb,options = {}){
+  let getter
+  if(typeof source === 'function'){
+    getter = source
+  } else {
+    getter = () => traverse(source)
+  }
+  let oldValue, newValue
+  const  job = () =>{
+      newValue = effectFn()
+      cb(newValue, oldValue)
+      oldValue = newValue
+  }
+  const effectFn = effect(()=> getter(), {
+    // lazy: true,
+    scheduler: () =>{
+      if(options.flush === 'post'){
+        const p = Promise.resolve()
+        p.then(job)
+      } else {
+        job()
+      }
+
+    } 
+  })
+  if(options.immediate){
+    job()
+  } else {
+    oldValue = effectFn()
+  }
+ 
+} 
+
+function traverse(value,seen = new Set()){
+  if(typeof value !== 'object') return 
+  if(value ===null) return
+  if(seen.has(value)) return 
+  seen.add(value)
+  if(Array.isArray(value)){
+    for(let i = 0; i < value.length; i++){
+      traverse(value[i],seen)
+    }
+  }else{
+    for(const key in value){
+      traverse(value[key],seen)
+    }
+  }
+  return value
+}
+
+
+watch(() =>obj.foo, (newValue,oldValue) => {
+  console.log('watch执行',newValue,oldValue)
+}, {flush:'post'})
+
+obj.foo = 5
+console.log(33)
+
+
+function track(target, key){
+  num++
+  console.log('track执行数和key==='+num+key)
+  if(!activeEffect) return
+  let depsMap = bucket.get(target)
+  if(!depsMap){
+    depsMap = new Map()
+    bucket.set(target, depsMap)
+  }
+  let deps = depsMap.get(key)
+  if(!deps){
+    deps = new Set()
+    depsMap.set(key, deps)
+  }
+
+  deps.add(activeEffect)
+  // 将其添加到 activeEffect.deps 数组中 ,储存所有包含当前副作用函数的依赖集合
+  activeEffect.deps.push(deps)
+}
+function trigger(target,key){
+  const depsMap = bucket.get(target)
+  if(!depsMap) return
+  const effects = depsMap.get(key)  
+  const effectsToRun = new Set() // 新增
+  // 如果不是当前激活的副作用函数，就添加到effectsToRun中
+  effects && effects.forEach(effect => {
+    if(effect !== activeEffect){
+      effectsToRun.add(effect)
+    }
+  }) 
+  effectsToRun.forEach(effectFn =>{
+
+    // 存在调度器，就调用调度器
+    if(effectFn.options.scheduler){
+      effectFn.options.scheduler(effectFn)
+    } else {
+      effectFn()
+    }  
+  }) // 新增
+
+  
+}
+
+
+// 在调用forEach遍历Set集合时，如果一个值已经被访问过，但该值删除并重新添加到集合，如果此时forEach 没有遍历结束，那么该值会被重新访问，会导致无限执行
+// 导致无限执行的原因
+// const set = new Set([1])
+// set.forEach(item => {
+//   set.delete(1)
+//   set.add(1)
+//   console.log('遍历中')
+// })
+
+// const sets = new Set([1])
+// const newSet = new Set(sets)
+// newSet.forEach(item => {
+//   sets.delete(1)
+//   sets.add(1)
+//   console.log('遍历中')
+// })
+
+// 总结 
+// 我们收集的对象为 {target: {key: [activeEffect]}}
+// weakMap  弱引用 会自动回收内存，不会造成内存泄漏
+
+
+
+
+</script>
+</html>

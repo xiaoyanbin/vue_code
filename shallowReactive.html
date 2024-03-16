@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+<div id="app"></div>
+
+</body>
+<script lang="ts">
+
+
+// 
+
+
+// const data = {ok: true, text: 'hello world'}
+// effect(function effectFn(){  
+//     document.body.innerText = obj.ok ? obj.text :'not'
+// })
+
+
+// if(type === 'ADD'){
+//   const iterateEffects = depsMap.get(ITERATE_KEY)
+//   if(!type === 'ADD' || type ==="DELETE"){
+//     const
+//   }
+// }
+// object.prototype.hasOwnProperty.call(target, key)
+
+// 断开副作用函数和代理对象的联系
+// 创建一个收集副作用的容器
+const bucket = new WeakMap()
+// 定义全局收集变量
+let activeEffect
+// 
+let effectStack = []
+// 定义触发类型
+const TriggerType = {
+  ADD: 'ADD',
+  DELETE: 'DELETE',
+  SET: 'SET'
+}
+// 处理for in循环
+const ITERATE_KEY = Symbol('iterate')
+let num = 0
+let h = 0
+let temp1,temp2
+
+
+const data = {foo: 4, num:1, get bar(){ return this.foo}}
+// 1.创建一个响应式对象
+
+function cleanup(effect){
+  effect.deps.forEach(dep => {
+    // deps 是依赖集合
+    dep.delete(effect)
+  })
+  // 最后需要重置effectFn.deps  
+  effect.deps.length = 0
+}
+// 副作用函数
+function effect(fn){
+  const effectFn = () => {
+    // 调用cleanup函数完成清除工作,清楚前面的副作用函数 activeEffect.deps
+    cleanup(effectFn)
+    // 嵌套执行时，内层副作用函数会覆盖外层副作用函数
+    activeEffect = effectFn
+    effectStack.push(effectFn)
+    fn()
+    effectStack.pop()
+    activeEffect = effectStack[effectStack.length - 1]
+
+  }
+  effectFn.deps = []
+  effectFn()
+}
+
+
+function reactive(data,options = {isShallow:false, scheduler: undefined,isReadonly:false}){
+
+  return new Proxy(data, {
+  get(target, key,receiver){
+    if(key == 'raw'){
+      return target
+    }
+    if(!activeEffect) return  Reflect.get(target, key,receiver)
+    // 非只读收集依赖
+    if(!options.isReadonly){
+      track(target,key)
+    }
+    const res = Reflect.get(target, key,receiver)
+
+    if(options.isShallow){
+      return res
+    }
+    if(typeof res === 'object' && res !== null){
+      return options.isReadonly ? readonly(res) : reactive(res)
+    }
+    return res
+
+  },
+  set(target, key, value,receiver){
+    if(options.isReadonly){
+      console.warn(`${key}readonly`)
+      return true
+    }
+    const oldVal = target[key]
+    const type = Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD'
+    const res = Reflect.set(target, key, value,receiver)
+    if(target === receiver.raw){
+      if(oldVal !==value &&(oldVal === oldVal || value === value)){
+        trigger(target,key,type)
+      }
+    }
+    return res
+  },
+  ownKeys(target){
+    track(target, ITERATE_KEY)
+    return Reflect.ownKeys(target)
+  },
+  deleteProperty(target, key){
+    if(options.isReadonly){
+      console.warn('readonly')
+      return true
+    }
+    const hadKey = Object.prototype.hasOwnProperty.call(target, key)
+    const res = Reflect.deleteProperty(target, key)
+    if(res  && hadKey){
+      trigger(target,key,TriggerType.DELETE)
+    }
+    return res
+  }
+})
+}
+
+function readonly(data) {
+  return reactive(data, {isShallow:false, isReadonly: true})
+}
+
+const obj  = reactive({foo:{bar:1}},{isShallow:false})
+
+effect(() =>{  
+    obj.foo.bar++
+})
+
+// obj.foo.bar = 3
+
+console.log(obj.foo.bar)
+
+
+
+function track(target, key){
+  num++
+  console.log(key,num,'key')
+  if(!activeEffect) return
+  let depsMap = bucket.get(target)
+  if(!depsMap){
+    depsMap = new Map()
+    bucket.set(target, depsMap)
+  }
+  let deps = depsMap.get(key)
+  if(!deps){
+    deps = new Set()
+    depsMap.set(key, deps)
+  }
+
+  deps.add(activeEffect)
+  // 将其添加到 activeEffect.deps 数组中 ,储存所有包含当前副作用函数的依赖集合
+  activeEffect.deps.push(deps)
+}
+function trigger(target,key,type){
+  const depsMap = bucket.get(target)
+  if(!depsMap) return
+  const effects = depsMap.get(key)  
+  // 取得与key相关联的副作用函数
+  
+  const effectsToRun = new Set() // 新增
+  // 如果不是当前激活的副作用函数，就添加到effectsToRun中
+  effects && effects.forEach(effect => {
+    if(effect !== activeEffect){
+      effectsToRun.add(effect)
+    }
+  }) 
+  // 将于ITERATE_KEY相关联的副作用函数添加到effectsToRun中
+  if(type === 'ADD' || type === 'DELETE'){
+    const iterateEffects = depsMap.get(ITERATE_KEY)
+    iterateEffects && iterateEffects.forEach(effect => {
+      if(effect !== activeEffect){
+        effectsToRun.add(effect)
+      }
+    })
+  }
+
+  effectsToRun.forEach(effectFn => {
+    if(effectFn?.options?.scheduler){
+      effectFn.options.scheduler(effectFn)
+    } else {
+      effectFn()
+    }
+  }) // 新增 
+}
+
+
+
+
+// 总结 
+// 处理NaN!==NaN的情况
+// 处理原型链上的属性被监听调用多次的问题
+// 1.如果对象自身不存在属性，那么会获取对象的原型链，并调用原型链的[[Get]]方法得到最终的结果，
+// 2. 原型链的属性也是响应式的，所以会调用track方法收集副作用函数，所以 child.bar 和parent.bar 都与副作用函数建立了联系
+// target是原始对象obj，receiver是代理对象child，我们发现receiver其实就是target的代理对象
+
+
+</script>
+</html>

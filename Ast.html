@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+function parse(str){
+  const tokens = tokenize(str)
+  const root = {
+    tag:'root',
+    children:[]
+  }
+  const elementStack = [root]
+  while(tokens.length > 0){
+    const parent = elementStack[elementStack.length - 1]
+    // 当前扫描Token
+    const t = token[0]
+    switch(t.type) {
+      case 'startTag':
+        const element = {
+          tag:t.value,
+          children:[]
+        }
+        parent.children.push(element)
+        elementStack.push(element)
+        break
+      case 'endTag':
+        elementStack.pop()
+        break
+      case 'text':
+
+        parent.children.push({
+          type:'text',
+          content:t.value
+        })
+        break
+
+    }
+    tokens.shift()
+  }
+  return root
+}
+
+
+</script>
+</html>

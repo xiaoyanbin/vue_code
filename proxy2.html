@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+<div id="app"></div>
+
+</body>
+<script lang="ts">
+
+// 1.设置一个不存在的属性时，会触发set，obj.noText并没有和effect建立联系
+// 我们怎样设置数据结构呢，我们先看三者的关系
+
+// effect(function effectFn(){  
+//     document.body.innerText = obj.text
+// })
+
+// 1.被操作读取的代理对象是 obj
+// 2.被操作的属性是 text
+// 3.使用effect注册的副作用函数effectFn
+
+
+
+// 我们需要解决三个问题
+// 1.两个副作用函数同时读取一个对象
+// 2.一个副作用函数中读取了两个不同属性
+// 3.不同的副作用函数读取了不同的属性
+
+// 它是一个树形的对象
+
+
+// 创建一个收集副作用的容器
+const bucket = new WeakMap()
+let activeEffect = null
+let num = 0
+const data = {text: 'hello world'}
+// 1.创建一个响应式对象
+const obj = new Proxy(data, {
+  get(target, key){
+    if(!activeEffect) return  Reflect.get(target, key)
+    // 获取到代理对象的属性，然后把副作用函数添加到bucket中
+    let depsMap = bucket.get(target)
+    if(!depsMap){
+      // 属性值所以用一个map来存储
+      depsMap = new Map()
+      bucket.set(target, depsMap)
+    }
+    // 获取代理对象的属性
+    let deps = depsMap.get(key)
+    if(!deps){
+      // 每个属性对应的副作用函数，用一个set来存储
+      deps = new Set()
+      depsMap.set(key, deps)
+    }
+    // 把副作用函数添加到代理对象对应的属性的set中， bucket[target][key] = [activeEffect]
+    deps.add(activeEffect)
+    //  track(target,key)
+    return Reflect.get(target, key)
+  },
+  set(target, key, value){
+    
+    Reflect.set(target, key, value)
+    // const depsMap = bucket.get(target)
+    // if(!depsMap) return
+    // const effects = depsMap.get(key)
+    // // 执行副作用函数
+    // effects && effects.forEach(fn => fn())
+    // return true
+     trigger(target,key)
+  }
+})
+// 副作用函数
+function effect(fn){
+  
+  activeEffect = fn
+  fn()
+}
+
+// effect 传入一个回调函数,响应系统不依赖副作用函数的名称
+effect(() =>{  
+    num++
+    // 当调用effect的时候，我们需要把fn放到bucket中
+    console.log('effect'+num)
+    document.body.innerText = obj.text
+})
+
+
+console.log('读取的值：'+obj.text)
+
+// 赋值的时候是先get再set
+obj.text = 'hello word 第二次设置'
+// 
+setTimeout(() => {
+  obj.Notext = 'hello word 第三次设置'
+}, 1000)
+
+
+function track(target, key){
+  if(!activeEffect) return
+  let depsMap = bucket.get(target)
+  if(!depsMap){
+    depsMap = new Map()
+    bucket.set(target, depsMap)
+  }
+  let deps = depsMap.get(key)
+  if(!deps){
+    deps = new Set()
+    depsMap.set(key, deps)
+  }
+  deps.add(activeEffect)
+}
+function trigger(target,key){
+  const depsMap = bucket.get(target)
+  if(!depsMap) return
+  const effects = depsMap.get(key)
+  const effectsToRun = new Set()
+  effects && effects.forEach(effect => {
+    effect()
+    // if(effect !== activeEffect){
+    //   effectsToRun.add(effect)
+    // }
+  })
+  // effectsToRun.forEach(effect => {
+  //   effect()
+  // })
+  
+}
+
+
+// 总结 
+// 我们收集的对象为 {target: {key: [activeEffect]}}
+// weakMap  弱引用 会自动回收内存，不会造成内存泄漏
+
+
+
+
+</script>
+</html>

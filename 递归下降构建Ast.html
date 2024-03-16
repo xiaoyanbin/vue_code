@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+const TextMondes = {
+  DATA:'DATA',
+  RCDATA:'RCDATA',
+  RAWTEXT:'RAWTEXT',
+  CDATA:'CDATA',
+}
+function parse(str){
+  const context = {
+    source:str,
+    mode:TextMondes.DATA,
+  }
+  const nodes = parseChildren(context,[])
+  return {
+    type:'root',
+    children:nodes
+  }
+}
+
+// parseChildren(context,ancestors)
+function parseChildren(context,ancestors){
+  const nodes = []
+  while(context.source){
+    const text = context.source
+    
+    if(text.startsWith('</')){
+      const match = text.match(/^<\/(\w+)>/)
+      if(match){
+        context.source = text.slice(match[0].length)
+        if(ancestors.length === 0){
+          console.error('根节点不能闭合')
+        }else if(match[1] !== ancestors[ancestors.length - 1].tag){
+          console.error('标签闭合不匹配')
+        }else{
+          ancestors.pop()
+          break
+        }
+      }
+    }
+    const textMatch = text.match(/^[^<]+/)
+    if(textMatch){
+      context.source = text.slice(textMatch[0].length)
+      nodes.push({
+        type:'text',
+        content:textMatch[0]
+      })
+      continue
+    }
+    const startTagMatch = text.match(/^<(\w+)/)
+    if(startTagMatch){
+      context.source = text.slice(startTagMatch[0].length)
+      const tag = startTagMatch[1]
+      const element = {
+        type:'element',
+        tag,
+        children:[],
+        parent:ancestors[ancestors.length - 1]
+      }
+      if(ancestors.length === 0){
+        element.parent = null
+      }
+      parseAttributes(context,element)
+      nodes.push(element)
+      ancestors.push(element)
+      continue
+    }
+  }
+  return nodes
+}
+
+</script>
+</html>

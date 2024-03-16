@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script>
+    const obj = {
+      tag: 'div',
+      children: [
+        {
+          tag: 'p',
+          children: 'hello'
+        },
+        {
+          tag: 'p',
+          children: 'world'
+        }
+      ]
+    };
+
+    function Render(obj,root) {
+      const el = document.createElement(obj.tag)
+      if(typeof obj.children === 'string'){
+        el.textContent = obj.children
+        const text = document.createTextNode(obj.children)
+        el.appendChild(text)
+      } else if(Array.isArray(obj.children)) {
+        obj.children.forEach(child => {
+          el.appendChild(Render(child,el))
+        })
+      }
+      root.appendChild(el)
+      
+    }
+
+// utils.js
+let handleError = null
+export default {
+  foo(fn){
+    callWithErrorHandling(fn)
+  },
+  // 
+  registerErrorHandler(fn){
+    handleError = fn
+  },
+  callWithErrorHandling(fn, instance, type, args) {
+    let res
+    try {
+      res = args ? fn(...args) : fn()
+    } catch (err) {
+      console.log(err);
+    }
+    return res
+  }
+}
+
+const bucket = new Set()
+// 原始数据
+const data = {text: 'hello'}
+const objs = new Proxy(data, {
+  get(target, key) {
+    bucket.add(key)
+    return target[key]
+  },
+  set(target, key, value) {
+    target[key] = value
+    bucket.forEach(effect => {
+      effect()
+    }) 
+    return true
+  }
+})
+
+// 用一个全局变量来保存当前的effect
+let activeEffect = null
+function effect(fn) {
+  activeEffect = fn
+  fn()
+  activeEffect = null
+}
+
+effect(() => {
+  document.body.textContent = data.text
+})
+
+const objss = new Proxy(data, {
+  get(target, key) {
+    if(activeEffect){
+      bucket.add(activeEffect)
+    }
+    return target[key]
+  },
+  set(target, key, value) {
+    target[key] = value
+    bucket.forEach(effect => {
+      effect()
+    }) 
+    return true
+  }
+})
+
+// 
+
+
+
+
+
+ 
+
+  </script>
+</body>
+</html>

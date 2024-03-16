@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+// 展示打印后的节点树
+function dump(node,indent = 0){
+  const type = node.type
+  const desc = node.type === 'Root' ? '' : (node.type === 'Element' ? node.tagName : node.content)
+  if(node.children){
+    console.log(' '.repeat(indent) + type + ' ' + desc)
+    for(let child of node.children){
+      dump(child,indent + 2)
+    }
+  }
+}
+
+//访问ast的节点
+
+function traverseNode(ast){
+  const currentNode = ast
+  if(currentNode.type === 'Element' && currentNode.tagName === 'div'){
+    currentNode.tagName = 'p'
+  }
+  const children = currentNode.children
+  if(children){
+    for(let i = 0; i < children.length; i++){
+      traverseNode(children[i])
+    }
+  }
+}
+
+function transform(ast){
+  traverseNode(ast)
+  return ast
+}
+
+// 结偶执行函数
+function traverseNode(ast,context){
+  const currentNode = ast
+  
+  // 每一个数组都是一个函数
+  const transforms = context.nodeTransforms
+  for(let i = 0; i < transforms.length; i++){
+    const transform = transforms[i]
+    transform(currentNode,context)
+  }
+  const children = currentNode.children
+  if(children){
+    for(let i = 0; i < children.length; i++){
+      traverseNode(children[i],context)
+    }
+  }
+}
+
+function transform(ast){
+  const context = {
+    nodeTransforms: [
+      transformElement,
+      transformText
+    ]
+  }
+  traverseNode(ast,context)
+  return ast
+}
+
+// 当退出阶段的回调函数执行时，当前访问的节点的子节点已经全部处理完毕
+function traverseNode(ast,context){
+  context.currentNode = ast
+  const exitFns = []
+  const transforms = context.nodeTransforms
+  for(let i = 0; i < transforms.length; i++){
+
+    const onExit = transforms[i](ast,context)
+    if(onExit){
+      // 将退出阶段的回掉函数添加到exitFns中
+      exitFns.push(onExit)
+    }
+    if(!context.currentNode) return 
+
+  }
+  const children = ast.children
+  if(children){
+    for(let i = 0; i < children.length; i++){
+      context.parent = context.currentNode
+      context.childIndex = i
+      traverseNode(children[i],context)
+    }
+  }
+  let i = exitFns.length
+  while(i--){
+    exitFns[i]()
+  }
+}
+
+
+
+</script>
+</html>

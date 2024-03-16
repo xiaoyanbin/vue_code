@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+<div id="app"></div>
+
+</body>
+<script lang="ts">
+
+// 创建一个收集副作用的容器
+const bucket = new Set()
+let activeEffect = null
+
+const data = {text: 'hello world'}
+// 1.创建一个响应式对象
+const obj = new Proxy(data, {
+  get(target, key){
+    console.log('get', key)
+    // bucket中添加副作用函数
+    if(activeEffect){
+      bucket.add(activeEffect)
+    }
+    return Reflect.get(target, key)
+  },
+  set(target, key, value){
+    console.log('set', key, value)
+    Reflect.set(target, key, value)
+    // 执行副作用函数
+    bucket.forEach(fn => fn())
+    return true
+  }
+})
+// 副作用函数
+function effect(fn){
+  // 当调用effect的时候，我们需要把fn放到bucket中
+  activeEffect = fn
+  fn()
+}
+
+// effect 传入一个回调函数,响应系统不依赖副作用函数的名称
+effect(() =>{  
+    document.body.innerText = obj.text
+})
+
+console.log('读取的值：'+obj.text)
+
+// 赋值的时候是先get再set
+obj.text = 'hello world第二次'
+// 
+setTimeout(() => {
+  obj.text = 'hello vue第三次'
+}, 1000)
+
+// 1.基本的实现和工作原理
+// 2.副作用函数不能使用硬编码
+// 3.我们希望传入一个函数，然后在函数中执行副作用函数
+
+</script>
+</html>

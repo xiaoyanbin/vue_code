@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+
+ function mountComponent(vnode, container,anchor) {
+  const componentOptions = vnode.type
+  const {render , data } = componentOptions
+  const state = reactive(data())
+  
+  // 将组件的render函数调用包装到effect 内
+  effect(()=>{
+    const subTree = render.call(state, state)
+    patch(null,subTree, container, anchor)
+  },{scheduler:queueJob})
+
+  const subTree = render.call(state, state)
+  patch(null,subTree, container, anchor)
+  console.log('组件挂载')
+
+ }
+
+ const queue = new Set()
+ let isFlushing = false
+ const p = Promise.resolve()
+ // 调度器的主要函数，用来将一个任务添加到缓存队列中，并刷新队列
+  function queueJob(job) {
+    if(!queue.has(job)){
+      queue.add(job)
+      if(!isFlushing){
+        isFlushing = true
+        p.then(() =>{
+        try{
+          queue.forEach(job => job())
+        } finally {
+          queue.clear()
+          isFlushing = false
+        }
+        })
+      }
+    }
+  }
+
+</script>
+</html>

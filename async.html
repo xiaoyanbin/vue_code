@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+function defineAsyncComponent(loader){
+  let InnerComp = null
+  return {
+    'name':'AsyncComponent',
+    setup() {
+      const loaded = ref(false)
+      loader().then(res=>{
+        InnerComp = res.default
+        loaded.value = true
+      })
+    }
+   }
+    return ()=> {
+       return loaded.value ? h(InnerComp) : h('div','loading...')
+    }
+   
+   }
+
+// 实现一个
+
+const AsyncComponent = defineAsyncComponent({
+  loader: () => import('MyComponent.vue'),
+  timeout: 2000,
+  errorComponent:MyErrorComp
+})
+
+function defineAsyncComponen(options){
+  if(typeof options === 'function'){
+    options = {loader:options}
+  }
+  const {loader,timeout = 3000,errorComponent} = options
+  let InnerComp = null
+  return {
+    'name':'AsyncComponent',
+    setup() {
+      const loaded = ref(false)
+      const error = ref(false)
+      loader().then(res=>{
+        InnerComp = res.default
+        loaded.value = true
+      }).catch(err=>{
+        error.value = true
+      })
+    }
+   }
+    return ()=> {
+       if(loaded.value){
+         return h(InnerComp)
+       }else if(error.value){
+         return h(errorComponent)
+       }else{
+         return h('div','loading...')
+       }
+    }
+}
+
+const AsyncCompone = defineAsyncComponent({
+  loader: () => import('MyComponent.vue'),
+  timeout: 2000,
+  errorComponent:MyErrorComp
+})
+
+function defineAsyncComponent(options){
+  if(typeof options === 'function'){
+    options = {loader:options}
+  }
+  const { loader } = options
+  let InnerComp = null
+  return {
+    'name':'AsyncComponent',
+    setup() {
+      const loaded = ref(false)
+      const error = ref(false)
+      loader().then(res=>{
+        InnerComp = res.default
+        loaded.value = true
+      }).catch(err=>{
+        error.value = true
+      })
+      let timer = setTimeout(()=>{
+        if(!loaded.value){
+          error.value = true
+        }
+        clearTimeout(timer)
+      },timeout)
+
+      onUnmounted(() => {
+        clearTimeout(timer)
+      })
+
+    }
+   }
+
+    return ()=> {
+       if(loaded.value){
+         return h(InnerComp)
+       }else if(error.value){
+         return h(errorComponent)
+       }else{
+         return h('div','loading...')
+       }
+    }
+
+} 
+</script>
+</html>

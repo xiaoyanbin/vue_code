@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+function watch(source,cb){
+
+  effect(() => traverse(source),{scheduler(){
+    cb()
+  }})
+}
+
+function traverse(value,seen = new Set()){
+  if(!isObject(value)) return 
+  if(value ===null) return
+  if(seen.has(value)) return 
+  seen.add(value)
+  if(Array.isArray(value)){
+    for(let i = 0; i < value.length; i++){
+      traverse(value[i],seen)
+    }
+  }else{
+    for(const key in value){
+      traverse(value[key],seen)
+    }
+  }
+}
+
+function watch(source,cb){
+  let getter
+  if(typeof source === 'function'){
+    getter = source
+  }else{
+    getter = () => source
+  } 
+  effect(()=>getter(),{scheduler(){
+    cb()
+  }})
+}
+
+function watch(source,cb){
+  let getter
+  if(typeof source === 'function'){
+    getter = source
+  }else{
+    getter = () => traverse(source)
+  } 
+  let oldValue,newValue
+  effect(getter,{scheduler(){
+    cb()
+  }})
+}
+
+
+function watch(source,cb,options = {}){
+      let getter
+      if(typeof source === 'function'){
+        getter = source
+      }else{
+        getter = () => traverse(source)
+      } 
+      let oldValue,newValue
+      let cleanup
+      function onInvalidate(cleanupFn){
+        cleanup = cleanupFn
+      }
+      const job = () => {
+        newValue = effectFn()
+        if(cleanup){
+          cleanup()
+        }
+        cb(newValue,oldValue,onInvalidate)
+        oldValue = newValue
+      }
+      const effectFn =  effect(()=>getter(),{scheduler(){
+        if(options.flush ==='post'){
+          const p = Promise.resolve()
+          p.then(job)
+          
+        }else{
+          job()
+        }
+      }
+    })
+    if(options.immediate){
+      job()
+    } else {
+      oldValue = effectFn()
+    }
+
+}
+
+</script>
+</html>

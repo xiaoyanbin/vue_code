@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <script>
+    const renderer = createRenderer({
+      createElement(type){
+        return document.createElement(type)
+      },
+      insert(child,parent,anchor){
+        parent.insertBefore(child,anchor)
+      },
+      remove(child){
+        child.parent.removeChild(child)
+      },
+      setElementText(el,text){
+        el.textContent = text
+      },
+      patchProps(el,key,prevValue,nextValue){
+        if(shouldSetAsProp(key,prevValue,nextValue)){
+         const type = typeof el[key]
+          if(type === 'boolean' && nextValue ===''){
+           el[key] = true
+          }else{
+            el[key] = nextValue
+          }
+        }else{
+          el.setAttribute(key,nextValue)
+        }  
+      }
+    })
+ // class
+
+ function patchProps(el,key,prevValue,nextValue) {
+   if(key === 'class'){
+      el.className = nextValue || ''
+   }else{
+     el.setAttribute(key,nextValue)
+   }
+  }
+
+  </script>
+</body>
+</html>

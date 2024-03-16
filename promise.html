@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+  class Commitment {
+      static PENDING = 'pending'; 
+      static FULFILLED = 'fulfilled';
+      static REJECTED = 'rejected';
+      constructor(func){
+        this.status = Commitment.PENDING
+        this.result = null;
+        this.resolveVallbacks = []
+        this.rejectVallbacks = []
+        try{
+          func(this.resolve.bind(this),this.reject.bind(this))
+        }catch(error){
+          this.reject(error)
+        }
+      }
+
+      resolve(result){
+          setTimeout(() => {
+            if(this.status === Commitment.PENDING){
+              this.status = Commitment.FULFILLED
+              this.result = result
+              this.resolveVallbacks.forEach(cb => cb(result))
+            }
+          },0)
+      }
+      reject(result){
+          setTimeout(() => {
+            if(this.status === Commitment.PENDING){
+              this.status = Commitment.REJECTED
+              this.result = result
+              this.rejectVallbacks.forEach(cb => cb(result))
+            }  
+          },0)
+      }
+      then(onFULFILLED,onREJECTED){
+        onFULFILLED = typeof onFULFILLED === 'function' ? onFULFILLED : () => {}
+        onREJECTED = typeof onREJECTED === 'function' ? onREJECTED : () => {}
+        if(this.status === Commitment.PENDING){
+            this.resolveVallbacks.push(() => onFULFILLED(this.result))
+            this.rejectVallbacks.push(() => onREJECTED(this.result))
+        }
+        if(this.status === Commitment.FULFILLED){
+          setTimeout(() => {
+             onFULFILLED(this.result)
+          },0)
+        }else if(this.status === Commitment.REJECTED){
+          setTimeout(() => {
+             onREJECTED(this.result)
+          },0)
+        }
+        return this
+      }
+  }
+  
+ 
+
+
+  console.log(1)
+  let commitment = new Commitment((resolve,reject) => {
+    console.log(2)
+    resolve('hello1')
+  })
+
+  commitment.then(
+    (result) => {console.log(result)},
+    (result) => {console.log(result.message)})
+  let promise = new Promise((resolve,reject) => {
+      resolve('hello')
+  })
+  console.log(3)
+
+</script>
+</html>

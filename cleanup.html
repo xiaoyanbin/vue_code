@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+
+
+let activeEffect
+function effect(fn){
+  const effectFn = () => {
+    activeEffect = effect
+    fn()
+  }
+  effectFn.deps = []
+  effectFn()
+  
+}
+
+function track(target,key){
+  if(!activeEffect) return
+  let depsMap = targetMap.get(target)
+  if(!depsMap){
+    targetMap.set(target, (depsMap = new Map()))
+  }
+  let dep = depsMap.get(key)
+  if(!depsMap){
+    depMap.set(key,(deps = new Set()))
+  }
+  deps.add(activeEffect)
+  activeEffect.deps.push(deps)
+}
+
+// activeEffects
+let activeEffects
+function effect(fn){
+  const effectFn = () => {
+    // effectFn 激活时，将其设置为当前激活的副作用函数
+    activeEffects = effect
+    fn()
+  }
+  effectFn.deps = []
+  // 执行副作用函数
+  effectFn() 
+}
+
+ // effectFn.deps = [] 如何收集
+ function track(target,key){
+  if(!activeEffects) return
+  let depsMap = targetMap.get(target)
+  if(!depsMap){
+    targetMap.set(target, (depsMap = new Map()))
+  }
+  let dep = depsMap.get(key)
+  if(!dep){
+    depsMap.set(key, (dep = new Set()))
+  }
+  dep.add(activeEffects)
+  
+  activeEffects.deps.push(dep)
+}
+
+// 对依赖的收集
+function cleanup(effectFn){
+  for(let i=0;i<effectFn.deps.length;i++){
+    const deps = effectfn.deps[i]
+    deps.delete(effectFn)
+  }
+  effectFn.deps.length = 0
+}
+
+let activeEffectss
+const effectStack = []
+
+function effect(fn){
+  const effectFn = () =>{
+    cleanup(effectFn)
+    activeEffect = effectFn
+    effectStack.push(effectFn)
+    effectStack.pop()
+    activeEffectss = effectStack[effectStack.length -1]
+    effectFn.deps = []
+    
+  }
+  effectFn()
+}
+
+//  导致无限循环
+const sets = new Set([1])
+sets.forEach(item => {
+  sets.delete(1)
+  sets.add(1)
+  console.log('遍历中')
+})
+
+const set = new Set([1])
+const newSet = new Set(set)
+
+newSet.forEach(item => {
+  set.delete(1)
+  set.add(1)
+  console.log('遍历中')
+})
+
+const effectsToRun = new Set(effects)
+effectsToRun.forEach(effect => {
+  if(effect.scheduler){
+    effect.scheduler()
+  }else{
+    effect()
+  }
+})
+
+
+
+
+</script>
+</html>

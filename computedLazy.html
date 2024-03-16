@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  
+</body>
+<script>
+
+function effect(fn, options = {}){
+  const effectFn = () => {
+      cleanup(effectFn)
+      activeEffect = effectFn
+      // 在调用副作用函数之前，将其添加到effectStack中
+      effectStack.push(effectFn)
+      fn()
+      // 在调用副作用函数之后，将其从effectStack中移除
+      effectStack.pop()
+      activeEffect = effectStack[effectStack.length - 1]
+
+  }
+  // 将options属性添加到effectFn上
+  effectFn.options = options
+  // 将effectFn添加到activeEffect上
+  effectFn.deps = []
+  if(!options.lazy){
+    effectFn()
+  }
+  return effectFn
+}
+
+const effectFn = effect(() =>{
+  console.log('effect')
+},{lazy:true})
+effectFn()
+
+
+function effect(fn,options = {}){
+  const effectFn = () => {
+    cleanup(effectFn)
+    activeEffect = effectFn
+    effectStack.push(effectFn)
+    const res = fn()
+    effectStack.pop()
+    activeEffect = effectStack[effectStack.length - 1]
+    return res
+  }
+  effectFn.options = options
+  effectFn.deps = []
+  if(!options.lazy){
+    effectFn()
+  }
+  return effectFn
+}
+
+function computed(getter){
+   const effectFn = effect(getter,{lazy:true})
+   const obj = {
+      get value(){
+        return effectFn()
+      }
+   }
+   return obj
+}
+
+function computed(getter){
+  let value
+  let dirty = true
+  const effectFn = effect(getter,{
+    lazy:true,
+    scheduler: () => {
+      // 如果依赖的值发生变化，就将dirty设置为true
+      if(!dirty){
+        dirty = true
+      }
+    }
+  })
+  const obj = {
+    get value(){
+      if(dirty){
+        value = effectFn()
+        dirty = false
+      }
+      return value
+    }
+  }
+ 
+  return obj
+}
+
+
+function computed(getter){
+  let value
+  let dirty = true
+  const effectFn = effect(getter,{
+    lazy:true,
+    scheduler: () => {
+      // 如果依赖的值发生变化，就将dirty设置为true
+      if(!dirty){
+        dirty = true
+        // 当计算属性的依赖发生变化时，就会触发effectFn的调度器函数
+        trigger(obj,'value')
+      }
+    }
+  })
+  const obj = {
+    get value(){
+      if(dirty){
+        value = effectFn()
+        dirty = false
+      }
+      track(obj,'value')
+      return value
+    }
+  }
+  return obj
+}
+
+</script>
+</html>
