@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+
+   function createRenderer(options){
+      const {createElement,insert,remove,setElementText,patchProp,patchElement} = options
+      function patch(n1,n2,container){
+          if(n1 && n1.type !==n2.type){
+            // n1存在，且类型不同，直接替换
+            unmount(n1)
+            n1 = null
+          }  
+          const { type } = n2
+          if(typeof type === 'string'){
+              if(!n1){
+                mountElement(n2,container)
+              } else {
+                patchElement(n1,n2)
+              }
+          
+          } else if(typeof type === 'object'){
+            // 处理组件类型
+          } else {
+            // 处理其他类型
+          }
+          
+      }
+
+      function mountElement(vnode,container){
+          const el = createElement(vnode.type)
+          if(typeof vnode.children === 'string'){
+            setElementText(el,vnode.children)
+          } else if(Array.isArray(vnode.children)){
+          console.log(222)
+            vnode.children.forEach(child => {
+              patch(null,child,el)
+            });
+          }
+
+          if(vnode.props){
+            for(const key in vnode.props){
+              console.log(key,'key')
+              patchProp(el,key,null,vnode.props[key])
+            }
+          }
+          insert(el,container,null)
+
+
+      }
+
+      function render(vnode,container){
+          if(vnode){
+            patch(container._vnode,vnode,container)
+          } else {
+            if(container._vnode){
+              // container.innerHTML = ''
+              unmount(container._vnode)
+            }
+          }
+          container._vnode = vnode
+        }
+        return {
+          render
+        }
+    }
+    const vnode = {
+      type:'div',
+      props:{
+        id:'foo',
+        onClick:() => {
+          console.log('click')
+        },
+      },
+      children:[
+        {
+          type:'p',
+          children:'world' 
+        }
+      ] 
+    }
+    
+    function shouldSetAsProp(el,key,nextValue){
+      if(key === 'form' && el.tagName === 'INPUT'){
+        return false
+      }
+      return key in el
+    }
+
+
+    // 将通用的操作
+    const renderer = createRenderer({
+      createElement(type){
+        console.log("创建元素"+type)
+        return document.createElement(type)
+      },
+      insert(child,parent,anchor){
+        console.log(`${child}插入到${parent}的${anchor}前`)
+         parent.insertBefore(child,anchor)
+      },
+      remove(child){
+        console.log(`${child}被移除`)
+        child.parent.removeChild(child)
+      },
+      unmount(vnode){
+        console.log(`${vnode}被卸载`)
+        const parent = vnode.el.parentNode
+        if(parent){
+          parent.removeChild(vnode.el)
+        }
+      },
+      setElementText(el,text){
+        console.log(`${el}的文本被设置为${text}`)
+        el.textContent = text
+      },
+      patchElement(n1,n2){
+        console.log(n1,n2)
+      },
+      patchProp(el,key,preValue,nextValue){
+        console.log(`el:${el},key:${key},preValue:${preValue},nextValue:${nextValue}`)
+        if(/^on/.test(key)){
+          let invoker = el._vei 
+          const eventName = key.slice(2).toLowerCase()
+          if(nextValue){
+            if(!invoker){
+              // 如果没有invoker，则将一个伪造的invoker赋值给el._vei中
+              // vei是vue event invoker的缩写
+              invoker = el._vei = (e) => {
+                // 当伪造事件处理函数执行时，会调用真正的事件处理函数
+                invoker.value(e)
+              }
+              // 将真正的事件处理函数赋值给伪造的事件处理函数
+              invoker.value = nextValue
+              // 将伪造的事件处理函数绑定到元素上
+              el.addEventListener(eventName,invoker)
+            } else {
+              invoker.value = nextValue
+            }
+          } else if(invoker){
+            // 如果nextValue不存在，则移除事件处理函数
+            el.removeEventListener(eventName,invoker)
+            el._vei = null
+          }
+
+          // if(preValue){
+          //   el.removeEventListener(eventName,preValue)
+          // }
+          // el.addEventListener(eventName,nextValue)
+        } else if(key === 'class'){
+          el.className = nextValue
+        } else if(shouldSetAsProp(el,key,nextValue)){
+          const type = typeof el[key]
+          if(type === 'boolean' && nextValue === ''){
+            el[key] = true
+          } else {
+            el[key] = nextValue
+          }
+        } else {
+          el.setAttribute(key,nextValue)
+        }
+      }
+    })
+
+    renderer.render(vnode,document.querySelector('#app'))
+
+
+
+  //  // 创建一个渲染器
+  //  const render = createRenderer()
+  //  // 调用render函数渲染该vnode
+  //  renderer.render(vnode,document.querySelector('#app'))
+  
+  </script>
+</body>
+</html>

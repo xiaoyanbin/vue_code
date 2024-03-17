@@ -20,7 +20,7 @@
   //  count.value++
 
    function createRenderer(options){
-      const {createElement,insert,remove,setElementText} = options
+      const {createElement,insert,remove,setElementText,patchProp} = options
       function patch(n1,n2,container){
           if(!n1){
             mountElement(n2,container)
@@ -42,9 +42,8 @@
 
           if(vnode.props){
             for(const key in vnode.props){
-              const value = vnode.props[key]
-              el.setAttribute(key,value)
-              // el[key] = value
+              console.log(key,'key')
+              patchProp(el,key,null,vnode.props[key])
             }
           }
           insert(el,container,null)
@@ -57,7 +56,8 @@
             patch(container._vnode,vnode,container)
           } else {
             if(container._vnode){
-              container.innerHTML = ''
+              // container.innerHTML = ''
+              unmount(container._vnode)
             }
           }
           container._vnode = vnode
@@ -80,6 +80,15 @@
         }
       ] 
     }
+    
+    function shouldSetAsProp(el,key,nextValue){
+      if(key === 'form' && el.tagName === 'INPUT'){
+        return false
+      }
+      return key in el
+    }
+
+
     // 将通用的操作
     const renderer = createRenderer({
       createElement(type){
@@ -94,9 +103,31 @@
         console.log(`${child}被移除`)
         child.parent.removeChild(child)
       },
+      unmount(vnode){
+        console.log(`${vnode}被卸载`)
+        const parent = vnode.el.parentNode
+        if(parent){
+          parent.removeChild(vnode.el)
+        }
+      },
       setElementText(el,text){
         console.log(`${el}的文本被设置为${text}`)
         el.textContent = text
+      },
+      patchProp(el,key,preValue,nextValue){
+        console.log(`el:${el},key:${key},preValue:${preValue},nextValue:${nextValue}`)
+        if(key === 'class'){
+          el.className = nextValue
+        } else if(shouldSetAsProp(el,key,nextValue)){
+          const type = typeof el[key]
+          if(type === 'boolean' && nextValue === ''){
+            el[key] = true
+          } else {
+            el[key] = nextValue
+          }
+        } else {
+          el.setAttribute(key,nextValue)
+        }
       }
     })
 
