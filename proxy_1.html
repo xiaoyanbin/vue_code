@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>简单的响应式</title>
+</head>
+<body>
+<div id="app"></div>
+</body>
+<script lang="ts">
+// 副作用函数，effect函数的执行可以直接或间接的影响其他函数的执行，我们就说effect产生了副作用 
+function effect(){
+  document.body.innerText = 'hello vue3'
+}
+
+// 响应式数据
+const obj = {text:'hello world'}
+function effect1(){
+  document.body.innerText = obj.text
+}
+
+obj.text = 'hello vue3' //修改obj.text的值，同时希望副作用函数会重新执行
+
+</script>
+</html>

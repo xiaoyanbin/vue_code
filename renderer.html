@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    const {effect,reactive,ref} = VueReactivity
+  //  function renderer(domString,container){
+  //    container.innerHTML = domString
+  //  }
+  //  const count = ref(1)
+  //  effect(() => {
+  //    renderer(`<h1>${count.value}</h1>`,document.querySelector('#app'))
+  //  })
+  //  count.value++
+
+   function createRenderer(options){
+      const {createElement,insert,remove,setElementText} = options
+      function patch(n1,n2,container){
+          if(!n1){
+            mountElement(n2,container)
+          } else {
+            // n1 存在，意味着打补丁
+          }
+      }
+
+      function mountElement(vnode,container){
+          const el = createElement(vnode.type)
+          if(typeof vnode.children === 'string'){
+            setElementText(el,vnode.children)
+
+          } else if(Array.isArray(vnode.children)){
+            vnode.children.forEach(element => {
+              patch(null,child,el)
+            });
+          }
+          insert(el,container,null)
+      }
+
+      function render(vnode,container){
+          if(vnode){
+            patch(container._vnode,vnode,container)
+          } else {
+            if(container._vnode){
+              container.innerHTML = ''
+            }
+          }
+          container._vnode = vnode
+        }
+        return {
+          render
+        }
+    }
+    const vnode = {
+      type:'h1',
+      children:'hello1'
+    }
+    // 将通用的操作
+    const renderer = createRenderer({
+      createElement(type){
+        console.log("创建元素"+type)
+        return document.createElement(type)
+      },
+      insert(child,parent,anchor){
+        console.log(`${child}插入到${parent}的${anchor}前`)
+         parent.insertBefore(child,anchor)
+      },
+      remove(child){
+        console.log(`${child}被移除`)
+        child.parent.removeChild(child)
+      },
+      setElementText(el,text){
+        console.log(`${el}的文本被设置为${text}`)
+        el.textContent = text
+      }
+    })
+
+    renderer.render(vnode,document.querySelector('#app'))
+
+
+
+  //  // 创建一个渲染器
+  //  const render = createRenderer()
+  //  // 调用render函数渲染该vnode
+  //  renderer.render(vnode,document.querySelector('#app'))
+  
+
+
+
+ 
+
+
+  </script>
+</body>
+</html>

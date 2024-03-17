@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>简单的响应式</title>
 </head>
 <body>
   
@@ -14,12 +14,10 @@
 
 // 创建一个收集副作用的容器
 const bucket = new Set()
-
 const data = {text: 'hello world'}
 // 1.创建一个响应式对象
 const obj = new Proxy(data, {
   get(target, key){
-    console.log('get', key)
     // bucket中添加副作用函数
     bucket.add(effect)
     return Reflect.get(target, key)
@@ -32,14 +30,12 @@ const obj = new Proxy(data, {
     return true
   }
 })
-
 // 副作用函数
 function effect(){
   document.body.innerText = obj.text
 }
 
 console.log('读取的值：'+obj.text)
-
 // 赋值的时候是先get再set
 obj.text = 'hello bibi'
 // effect()
