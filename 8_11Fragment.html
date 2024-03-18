@@ -104,7 +104,7 @@
       }
 
       function mountElement(vnode,container){
-          const el = createElement(vnode.type)
+          const el = vnode.el = createElement(vnode.type)
           if(typeof vnode.children === 'string'){
             setElementText(el,vnode.children)
           } else if(Array.isArray(vnode.children)){

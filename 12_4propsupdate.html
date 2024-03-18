@@ -88,6 +88,36 @@
               }
             }
           }
+        //  vnode.component = instance
+        
+        // 创建渲染响应式上下文
+        const renderContext = new Proxy(instance,{
+          get(target,key,receiver){
+            const { props, state } = target
+            if(state && key in state){
+              return Reflect.get(state,key,receiver)
+            } else if(props && key in props){
+              return Reflect.get(props,key,reactive)
+            } else {
+              return undefined
+            }
+          },
+          set(target,key,value,receiver){
+            const { props, state } = target
+            if(state && key in state){
+             // state[key] = value
+               Reflect.set(state,key,value,receiver)
+            } else if(props && key in props){
+              console.warn(`不允许直接修改实例上的属性${key} props are readonly`)
+            } else {
+              console.log('不允许直接修改实例上的属性')
+            }
+          }
+        })
+        
+     
+          console.log('组件更新')
+         
       }
       // 判断props是否发生改变
       function hasPropsChanged(prevProps,nextProps){
@@ -108,11 +138,11 @@
       function mountComponent(vnode,container,anchor){
         const componentOptions = vnode.type
         const { render,data, props:propsOption, beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
-        beforeCreate && beforeCreate.call()
+        beforeCreate && beforeCreate()
         const state = reactive(data())
          // 调用resolveProps函数，将props转换为响应式对象
          const [props, attrs] = resolveProps(propsOption,vnode.props)
-          console.log(props, attrs)
+          console.log('刚刚获取到的：',props, attrs)
         const instance = {
           state,
           props:shallowReactive(props),
@@ -126,11 +156,10 @@
         const renderContext = new Proxy(instance,{
           get(target,key,receiver){
             const { props, state } = target
-
             if(state && key in state){
-              return state[key]
+              return Reflect.get(state,key,receiver)
             } else if(props && key in props){
-              return props[key]
+              return Reflect.get(props,key,reactive)
             } else {
               return undefined
             }
@@ -138,7 +167,8 @@
           set(target,key,value,receiver){
             const { props, state } = target
             if(state && key in state){
-              state[key] = value
+             // state[key] = value
+               Reflect.set(state,key,value,receiver)
             } else if(props && key in props){
               console.warn(`不允许直接修改实例上的属性${key} props are readonly`)
             } else {
@@ -147,34 +177,25 @@
           }
         })
          
-
-
         // 当组件自身状态发生改变时，对组件进行更新
-        created && created.call(state)
+        created && created.call(renderContext)
         effect(() => {
-          const subTree = render.call(state,state)
+          const subTree = render.call(renderContext,renderContext)
           if(!instance.isMounted){
-            beforeMount && beforeMount.call(state)
+            beforeMount && beforeMount.call(renderContext)
             instance.isMounted = true
             patch(null,subTree,container,anchor)
-            mounted && mounted.call(state)
+            mounted && mounted.call(renderContext)
           } else {
-            beforeUpdate && beforeUpdate.call(state)
+            beforeUpdate && beforeUpdate.call(renderContext)
             patch(instance.subTree,subTree,container)
-            updated && updated.call(state)
+            updated && updated.call(renderContext)
           }
           instance.subTree = subTree
         },{
           scheduler:queueJob
         })
 
-        // const instance = {
-        //   vnode,
-        //   render: null
-        // }
-        // instance.render = vnode.type.render
-        // let subTree = instance.render()
-        // renderer.render(subTree,container)
       }
       // resolveProps函数，用于将props转换为响应式对象
       function resolveProps(options,propsData){
@@ -208,14 +229,17 @@
             patchProp(el,key,oldProps[key],null)
           }
         }
+        console.log(n1,n2,el,'el')
         patchChildren(n1,n2,el)
       }
       // 比较子节点
       function patchChildren(n1,n2,container){
+        
         if(typeof n2.children === 'string'){
           if(Array.isArray(n1.children)){
             unmount(n1)
           }
+          console.log('比较节点',n2.children,n1.children)
           if(n2.children !== n1.children){
             setElementText(container,n2.children)
           }
@@ -252,7 +276,7 @@
       }
       // 挂载节点
       function mountElement(vnode,container){
-          const el = createElement(vnode.type)
+          const el = vnode.el = createElement(vnode.type)
           if(typeof vnode.children === 'string'){
             setElementText(el,vnode.children)
           } else if(Array.isArray(vnode.children)){
@@ -405,7 +429,6 @@
       render(){
         return {
           type:'div',
-          props:{id:'foo'},
           children:`foo 的值是 ${this.count}${this.title}`
         }
       } 

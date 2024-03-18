@@ -42,7 +42,7 @@
 
     function mountElement(vnode,container){
       // 创建dom元素
-      const el = document.createElement(vnode.type)
+      const el = vnode.el = createElement(vnode.type)
       if(typeof vnode.children === 'string') {
         el.textContent = vnode.children
       }
