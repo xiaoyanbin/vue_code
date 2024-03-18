@@ -58,7 +58,7 @@
                 patchElement(n1,n2)
               }
           
-          } else if(typeof type === 'object'){
+          } else if(typeof type === 'object' || typeof type === 'function'){
              if(!n1){
                 // 挂载组件
                mountComponent(n2,container,anchor)
@@ -142,7 +142,14 @@
       }
 
       function mountComponent(vnode,container,anchor){
-        const componentOptions = vnode.type
+        let componentOptions = vnode.type
+        // 判断组件是否是函数式组件
+        const isFunctional = typeof vnode.type === 'function'
+        
+        if(isFunctional){
+          componentOptions = {render:vnode.type, props:vnode.props,data:()=>({}),setup:()=>{}}
+        } 
+
         const { render,data, setup,  props:propsOption, beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
         beforeCreate && beforeCreate()
         const state = reactive(data())
@@ -498,34 +505,18 @@
       } 
     }
     const vnode = {
-      type:MyComponent,
-      props:{
-         title:'A big Title',
-         other:'this.val',
-         onChange:handers
-      },
-      children:{
-        header(){
-          return {
-            type:'h1',
-            children:'我是标题'
-          }
-        },
-        body(){
-          return {
-            type:'p',
-            children:'我是内容'
-          }
-        },
-        footer(){
-          return {
-            type:'h2',
-            children:'我是底部'
-          }
+      type:(props) =>{
+        return {
+          type:'div',
+          children: `我是${props.title}`
         }
-      }
+      },
+      props:{
+        title:'函数组件1'
+      },
+      children: null
+        
     }
-
     renderer.render(vnode,document.querySelector('#app'))
     
    })
