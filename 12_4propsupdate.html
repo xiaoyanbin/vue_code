@@ -9,7 +9,7 @@
 <body>
   <div id="app"></div>
   <script>
-   const {effect,reactive,ref} = VueReactivity
+   const {effect,reactive,shallowReactive,ref} = VueReactivity
 
    const bol = ref(false)
 
@@ -38,7 +38,7 @@
 
    function createRenderer(options){
       const {createElement,insert,remove,setElementText,patchProp} = options
-      function patch(n1,n2,container){
+      function patch(n1,n2,container,anchor){
           if(n1 && n1.type !==n2.type){
             // n1存在，且类型不同，直接替换
             unmount(n1)
@@ -55,10 +55,10 @@
           } else if(typeof type === 'object'){
              if(!n1){
                 // 挂载组件
-               mountComponent(n2,container)
+               mountComponent(n2,container,anchor)
              } else {
                // 更新组件
-               patchComponent(n1,n2,container)
+               patchComponent(n1,n2,container,anchor)
              }
 
             // 处理组件类型
@@ -69,25 +69,86 @@
       }
       
       function patchComponent(n1,n2,container){
-        // const instance = n2.component = n1.component
-        // instance.vnode = n2
-        // instance.next = n2
-        // instance.update()
+         // 获取组件实例，及n1.component， 同时让虚拟节点n2也指向组件节点
+         const instance = n2.component = n1.component
+         // 获取当前的porps数据
+          const { props } = instance
+          // 调用hasPropsChanged函数，判断props是否发生改变，如没有变化，则不需要更新
+          if(hasPropsChanged(n1.props,n2.props)){
+            
+            const [ nextProps, nextAttrs ] = resolveProps(n2.type.props,n2.props)
+            console.log('新的节点',nextProps,nextAttrs)
+            for(const key in nextProps){
+               props[key] = nextProps[key]
+            }
+            // 删除不存在的props
+            for(const key in props){
+              if(!(key in nextProps)){
+                delete props[key]
+              }
+            }
+          }
+      }
+      // 判断props是否发生改变
+      function hasPropsChanged(prevProps,nextProps){
+        const prevKeys = Object.keys(prevProps)
+        const nextKeys = Object.keys(nextProps)
+        if(prevKeys.length !== nextKeys.length){
+          return true
+        }
+        for(let i = 0;i<prevKeys.length;i++){
+          const key = prevKeys[i]
+          if(prevProps[key] !== nextProps[key]){
+            return true
+          }
+        }
+        return false
       }
 
       function mountComponent(vnode,container,anchor){
         const componentOptions = vnode.type
-        const { render,data,beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
+        const { render,data, props:propsOption, beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
         beforeCreate && beforeCreate.call()
         const state = reactive(data())
-
+         // 调用resolveProps函数，将props转换为响应式对象
+         const [props, attrs] = resolveProps(propsOption,vnode.props)
+          console.log(props, attrs)
         const instance = {
           state,
+          props:shallowReactive(props),
           isMounted: false,
           subTree: null
         }
 
         vnode.component = instance
+        
+        // 创建渲染响应式上下文
+        const renderContext = new Proxy(instance,{
+          get(target,key,receiver){
+            const { props, state } = target
+
+            if(state && key in state){
+              return state[key]
+            } else if(props && key in props){
+              return props[key]
+            } else {
+              return undefined
+            }
+          },
+          set(target,key,value,receiver){
+            const { props, state } = target
+            if(state && key in state){
+              state[key] = value
+            } else if(props && key in props){
+              console.warn(`不允许直接修改实例上的属性${key} props are readonly`)
+            } else {
+              console.log('不允许直接修改实例上的属性')
+            }
+          }
+        })
+         
+
+
         // 当组件自身状态发生改变时，对组件进行更新
         created && created.call(state)
         effect(() => {
@@ -115,6 +176,21 @@
         // let subTree = instance.render()
         // renderer.render(subTree,container)
       }
+      // resolveProps函数，用于将props转换为响应式对象
+      function resolveProps(options,propsData){
+        console.log('组件定义的props',options,'传入组件的数据',propsData)
+        const props = {}
+        const attrs = {}
+        for(const key in propsData){
+          if(key in options){
+            props[key] = propsData[key]
+          } else {
+            attrs[key] = propsData[key]
+          }
+        }
+        return [props,attrs]
+      }
+
       // 比较节点
       function patchElement(n1,n2){
         const el = n2.el = n1.el
@@ -317,6 +393,9 @@
           count: 'hello word 生命周期'
         }
       },
+      props:{
+        title:String,
+      },
       beforeCreate() {
         console.log('beforeCreate')
       },
@@ -327,11 +406,30 @@
         return {
           type:'div',
           props:{id:'foo'},
-          children:`foo 的值是 ${this.count}`
+          children:`foo 的值是 ${this.count}${this.title}`
         }
       } 
     }
-    renderer.render({type:MyComponent},document.querySelector('#app'))
+    const vnode = {
+      type:MyComponent,
+      props:{
+         title:'A big Title',
+         other:'this.val'
+      }
+    }
+    const vnode1 = {
+      type:MyComponent,
+      props:{
+         title:'A smail Title',
+         other:'this.val'
+      }
+    }
+
+    renderer.render(vnode,document.querySelector('#app'))
+    setTimeout(() =>{
+      renderer.render(vnode1,document.querySelector('#app'))
+    },3000)
+    
    })
 
  
