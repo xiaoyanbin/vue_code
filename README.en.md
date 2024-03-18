@@ -1,7 +1,7 @@
 # vue_code
 
 #### Description
-vue设计与实现源码
+vue设计与实现源码，文件名序号前缀和书同步，持续更新中。。。
 
 #### Software Architecture
 Software architecture description
