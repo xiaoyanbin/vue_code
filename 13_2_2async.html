@@ -7,6 +7,7 @@
   <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
 </head>
 <body>
+  未完成
   <div id="app"></div>
   <script>
    const {effect,reactive,shallowReactive,ref,shallowReadonly} = VueReactivity
@@ -143,6 +144,7 @@
 
       function mountComponent(vnode,container,anchor){
         const componentOptions = vnode.type
+        console.log('组件',componentOptions)
         const { render,data, setup,  props:propsOption, beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
         beforeCreate && beforeCreate()
         const state = reactive(data())
@@ -459,10 +461,8 @@
 
     effect(() =>{
       
-    function handers(data,value){
-      console.log('change11',data,value)
-    }
-    const MyComponent = {
+
+      const MyComponent = {
       name: 'MyComponent',
       data(){
         return {
@@ -472,64 +472,28 @@
       props:{
         title:String,
       },
-      setup(props,{ emit }){
-        function onMounted(fn){
-          if(currentInstance){
-            currentInstance.mounted.push(fn)
-          }else {
-            console.warn('onMounted只能在setup函数中使用')
-          }
-        }
+      setup(){
         const count1 = ref('我是setup中的数据')
-        onMounted(() => {
-          effect(() => {
-            count1.value = '我是onMounted中的数据'
-          })
-          console.log('组件挂载完成')
-        })
-        
         return { count1 }
       },
       render(){
         return {
-            type:'div',
-            children: `我是组件${this.count1.value}`
-          }
+          type:'div',
+          children:`foo 的值是 ${this.count1.value}${this.title}`
+        }
       } 
     }
-    const vnode = {
-      type:MyComponent,
-      props:{
-         title:'A big Title',
-         other:'this.val',
-         onChange:handers
-      },
-      children:{
-        header(){
-          return {
-            type:'h1',
-            children:'我是标题'
-          }
-        },
-        body(){
-          return {
-            type:'p',
-            children:'我是内容'
-          }
-        },
-        footer(){
-          return {
-            type:'h2',
-            children:'我是底部'
-          }
-        }
-      }
-    }
+
+
 
     function defineAsyncComponent(loader){
       let InnerComp = null
       return {
         name:'AsyncComponentWrapper',
+        data(){
+          return {
+          }
+        },
         setup(){
           const loaded = ref(false)
           loader().then(res => {
@@ -537,19 +501,21 @@
             console.log(res,'res')
             loaded.value = true
           })
-          return () => {
-            
-            return loaded.value ? {type: InnerComp}: {type:'Text',children:'loading...'}
+          const fn = () => { 
+            return loaded.value ?{ type: InnerComp} : {type:'Text',children:'loading...'}
           }
+          console.log(fn,'fn')
+          return fn
         }
       }
     }
-   
-    const asyncComponent = defineAsyncComponent(() => import('./asyncComponent.js'))
-    
-    console.log(asyncComponent,'asyncComponent')
 
-    renderer.render(asyncComponent,document.querySelector('#app'))
+   
+    const asyncComponent =  defineAsyncComponent(() => Promise.resolve(MyComponent))
+    
+    console.log({type:asyncComponent},'asyncComponent')
+
+    renderer.render({type:asyncComponent},document.querySelector('#app'))
     
    })
 

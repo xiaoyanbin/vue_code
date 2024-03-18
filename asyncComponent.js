@@ -1,17 +1,9 @@
 
 function asyncComponent() {
-  new Promise((resolve, reject) => {
+ return new Promise((resolve, reject) => {
     resolve({
       type: 'div',
-      children: [
-        {
-          type: 'component',
-          name: 'Button',
-          props: {
-            title: 'Click me'
-          }
-        }
-      ]
+      children: 'Hello World'
     })
   })
 }
