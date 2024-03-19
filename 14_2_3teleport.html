@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <template>
+      <div id="box" style="z-index:-1">
+        <Overlay />
+     </div>
+  </template>
+</body>
+<script>
+
+function patch(n1,n2,container,anchor){
+  if(n1 && n1.type !== n2.type){
+    unmout(n1)
+    n1 = null
+  }
+  const {type,shapeFlag} = n2
+  if(typeof type === 'string'){
+    processElement(n1,n2,container,anchor)
+  }else if(typeof type === 'object' && type.__isTeleport){
+    type.process(n1,n2,container,anchor,{
+      patch,
+      pathChildren,
+      unmout,
+      move(vnode,container,anchor){
+        insert(vnode.component ? vnode.component.subTree.el : vnode.el,container,anchor)
+      }
+    })
+}
+}
+
+const Teleport = {
+   __isTeleport:true,
+   proess(n1,n2,container,anchor, internals){
+     const {patch,move,unmout} = internals
+     if(!n1){
+       const placeholder = (n2.el = document.createComment('teleport start'))
+       const mainAnchor = (n2.anchor = document.createComment('teleport end'))
+       insert(placeholder,container,anchor)
+       insert(mainAnchor,container,anchor)
+       n2.anchor = mainAnchor
+       move(n2,container,anchor)
+      }else{
+        n2.el = n1.el
+        n2.anchor = n1.anchor
+        n2.component = n1.component
+        move(n2,container,anchor)
+      }
+   }
+}
+
+
+
+</script>
+</html>

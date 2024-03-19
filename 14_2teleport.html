@@ -4,57 +4,633 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Document</title>
+  <script src="https://unpkg.com/@vue/reactivity@3.0.5/dist/reactivity.global.js"></script>
 </head>
 <body>
-  <template>
-      <div id="box" style="z-index:-1">
-        <Overlay />
-     </div>
-  </template>
-</body>
-<script>
+  <div id="app"></div>
+  <div id="to"></div>
+  <div id="form"></div>
+  <script>
+   const {effect,reactive,shallowReactive,ref,shallowReadonly} = VueReactivity
 
-function patch(n1,n2,container,anchor){
-  if(n1 && n1.type !== n2.type){
-    unmout(n1)
-    n1 = null
-  }
-  const {type,shapeFlag} = n2
-  if(typeof type === 'string'){
-    processElement(n1,n2,container,anchor)
-  }else if(typeof type === 'object' && type.__isTeleport){
-    type.process(n1,n2,container,anchor,{
-      patch,
-      pathChildren,
-      unmout,
-      move(vnode,container,anchor){
-        insert(vnode.component ? vnode.component.subTree.el : vnode.el,container,anchor)
+   const bol = ref(false)
+
+   // 缓存队列代码
+   const queue = new Set()
+   let isFlushing = false
+   const p = Promise.resolve()
+   // 调度器的主要函数，用来将一个任务添加到缓冲队列中，并开始刷新队列
+    function queueJob(job){
+      if(!queue.has(job)){
+        queue.add(job)
+        if(!isFlushing){
+          isFlushing = true
+          p.then(() =>{
+            try{
+              queue.forEach(job => job())
+            } finally {
+              isFlushing = false
+              queue.clear()
+            }
+          })
+        }
+      }
+    }
+ 
+    // 1.定义一个全局变量currentInstance
+    let currentInstance = null
+    // 2.定义一个setCurrentInstance方法，用于设置currentInstance
+    function setCurrentInstance(instance){
+      currentInstance = instance
+    }
+
+   function createRenderer(options){
+      const {createElement,insert,remove,setElementText,patchProp,unmount} = options
+      function patch(n1,n2,container,anchor){
+          if(n1 && n1.type !==n2.type){
+            // n1存在，且类型不同，直接替换
+            unmount(n1)
+            n1 = null
+          }  
+          const { type } = n2
+          if(typeof type === 'string'){
+              if(!n1){
+                mountElement(n2,container)
+              } else {
+                patchElement(n1,n2)
+              }
+          
+          } else if(typeof type === 'object' || type.__isTeleport){
+            // 处理Teleport组件
+            type.process(n1,n2,container,anchor,{
+              patch,
+              patchChildren,
+              unmount,
+              move(vnode,container,anchor){
+               
+                insert(vnode.component ? vnode.component.subTree.el:vnode.el,container,anchor)
+              },
+            })
+
+          } 
+          else if(typeof type === 'object' || typeof type === 'function'){
+             if(!n1){
+                // 挂载组件
+               mountComponent(n2,container,anchor)
+             } else {
+               // 更新组件
+               patchComponent(n1,n2,container,anchor)
+             }
+
+            // 处理组件类型
+          } else {
+            // 处理其他类型
+          }
+          
+      }
+      
+      function patchComponent(n1,n2,container){
+         // 获取组件实例，及n1.component， 同时让虚拟节点n2也指向组件节点
+         const instance = n2.component = n1.component
+         // 获取当前的porps数据
+          const { props } = instance
+          // 调用hasPropsChanged函数，判断props是否发生改变，如没有变化，则不需要更新
+          if(hasPropsChanged(n1.props,n2.props)){
+            
+            const [ nextProps, nextAttrs ] = resolveProps(n2.type.props,n2.props)
+            console.log('新的节点',nextProps,nextAttrs)
+            for(const key in nextProps){
+               props[key] = nextProps[key]
+            }
+            // 删除不存在的props
+            for(const key in props){
+              if(!(key in nextProps)){
+                delete props[key]
+              }
+            }
+          }
+        //  vnode.component = instance
+        
+        // 创建渲染响应式上下文
+        const renderContext = new Proxy(instance,{
+          get(target,key,receiver){
+            const { props, state } = target
+            if(state && key in state){
+              return Reflect.get(state,key,receiver)
+            } else if(props && key in props){
+              return Reflect.get(props,key,reactive)
+            } else {
+              return undefined
+            }
+          },
+          set(target,key,value,receiver){
+            const { props, state } = target
+            if(state && key in state){
+             // state[key] = value
+               Reflect.set(state,key,value,receiver)
+            } else if(props && key in props){
+              console.warn(`不允许直接修改实例上的属性${key} props are readonly`)
+            } else {
+              console.log('不允许直接修改实例上的属性')
+            }
+          }
+        })
+        
+     
+          console.log('组件更新')
+         
+      }
+      // 判断props是否发生改变
+      function hasPropsChanged(prevProps,nextProps){
+        const prevKeys = Object.keys(prevProps)
+        const nextKeys = Object.keys(nextProps)
+        if(prevKeys.length !== nextKeys.length){
+          return true
+        }
+        for(let i = 0;i<prevKeys.length;i++){
+          const key = prevKeys[i]
+          if(prevProps[key] !== nextProps[key]){
+            return true
+          }
+        }
+        return false
+      }
+
+      function mountComponent(vnode,container,anchor){
+        const componentOptions = vnode.type
+        const { render:renders,data, setup,  props:propsOption, beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
+        beforeCreate && beforeCreate()
+        const state = reactive(data())
+         // 调用resolveProps函数，将props转换为响应式对象
+         const [props, attrs] = resolveProps(propsOption,vnode.props)
+         const slots = vnode.children || {}
+        const instance = {
+          state,
+          props:shallowReactive(props),
+          isMounted: false,
+          subTree: null,
+          slots,
+          mounted:[]
+        }
+        
+        console.log(slots,'slots')
+
+        function emit(event,...payload){
+          const { props } = instance
+          // 根据约定事件对事件名称进行处理 change => onChange
+          const eventName = `on${event[0].toUpperCase()}${event.slice(1)}`
+          
+          const handler = props[`${eventName}`]
+          handler && handler(...payload)
+        }
+
+
+
+        // setup
+        const setupContext = { attrs, emit, slots }
+      
+        setCurrentInstance(instance)
+        // 处理setup
+        const setupResult = setup(shallowReadonly(instance.props),setupContext)
+        setCurrentInstance(null)
+        let setupState = null
+        let render = renders
+         console.log(setupResult,'setupResult',instance)
+        if(typeof setupResult === 'function'){
+          render = setupResult
+        } else {
+          setupState = setupResult
+        }
+        vnode.component = instance
+        
+        // 创建渲染响应式上下文
+        const renderContext = new Proxy(instance,{
+          get(target,key,receiver){
+            const { props, state, slots } = target
+            if(state && key in state){
+              return Reflect.get(state,key,receiver)
+            } else if(props && key in props){
+              return Reflect.get(props,key,reactive)
+            } else if(setupState && key in setupState){
+              return Reflect.get(setupState,key,receiver)
+            } else if(key === '$slots'){
+              console.log('slots',slots)
+              return slots
+            }
+            else {
+              return undefined
+            }   
+          },
+          set(target,key,value,receiver){
+            const { props, state } = target
+            if(state && key in state){
+             // state[key] = value
+               Reflect.set(state,key,value,receiver)
+            } else if(props && key in props){
+              console.warn(`不允许直接修改实例上的属性${key} props are readonly`)
+            } else if(setupState && key in setupState){
+              Reflect.set(setupState,key,value,receiver)
+            } else {
+              console.log('不允许直接修改实例上的属性')
+            }
+          }
+        })
+         
+        // 当组件自身状态发生改变时，对组件进行更新
+        created && created.call(renderContext)
+        effect(() => {
+          const subTree = render.call(renderContext,renderContext)
+          if(!instance.isMounted){
+            beforeMount && beforeMount.call(renderContext)
+            instance.isMounted = true
+            patch(null,subTree,container,anchor)
+            instance.mounted && instance.mounted.forEach(hook => hook.call(renderContext))
+          } else {
+            beforeUpdate && beforeUpdate.call(renderContext)
+            patch(instance.subTree,subTree,container)
+            updated && updated.call(renderContext)
+          }
+          instance.subTree = subTree
+        },{
+          scheduler:queueJob
+        })
+
+      }
+      // resolveProps函数，用于将props转换为响应式对象
+      function resolveProps(options,propsData){
+        console.log('组件定义的props',options,'传入组件的数据',propsData)
+        const props = {}
+        const attrs = {}
+        for(const key in propsData){
+          if(key in options || key.startsWith('on')){
+            props[key] = propsData[key]
+          } else {
+            attrs[key] = propsData[key]
+          }
+        }
+        return [props,attrs]
+      }
+
+      // 比较节点
+      function patchElement(n1,n2){
+        const el = n2.el = n1.el
+        const oldProps = n1.props || {}
+        const newProps = n2.props || {}
+        for(const key in newProps){
+          const prevValue = oldProps[key]
+          const nextValue = newProps[key]
+          if(prevValue !== nextValue){
+            patchProp(el,key,prevValue,nextValue)
+          }
+        }
+        for(const key in oldProps){
+          if(!(key in newProps)){
+            patchProp(el,key,oldProps[key],null)
+          }
+        }
+        console.log(n1,n2,el,'el')
+        patchChildren(n1,n2,el)
+      }
+      // 比较子节点
+      function patchChildren(n1,n2,container){
+        
+        if(typeof n2.children === 'string'){
+          if(Array.isArray(n1.children)){
+            unmount(n1)
+          }
+          console.log('比较节点',n2.children,n1.children)
+          if(n2.children !== n1.children){
+            setElementText(container,n2.children)
+          }
+        } else if(Array.isArray(n2.children)){
+          if(typeof n1.children === 'string'){
+            setElementText(container,'')
+            mountElement(n2,container)
+          } else {
+            const c1 = n1.children
+            const c2 = n2.children
+            const commonLength = Math.min(c1.length,c2.length)
+            for(let i = 0;i<commonLength;i++){
+              patch(c1[i],c2[i],container)
+            }
+            if(c1.length > c2.length){
+              c1.slice(c2.length).forEach(child => {
+                unmount(child)
+              })
+            } else if(c1.length < c2.length){
+              c2.slice(c1.length).forEach(child => {
+                mountElement(child,container)
+              })
+            }
+          }
+        }else {
+          if(Array.isArray(n1.children)){
+            n1.children.forEach(child => {
+              unmount(child)
+            })
+          } else {
+            unmount(n1.children)
+          }
+        }
+      }
+      // 挂载节点
+      function mountElement(vnode,container){
+          const el = vnode.el = createElement(vnode.type)
+          if(typeof vnode.children === 'string'){
+            setElementText(el,vnode.children)
+          } else if(Array.isArray(vnode.children)){
+          console.log(222)
+            vnode.children.forEach(child => {
+              patch(null,child,el)
+            });
+          }
+
+          if(vnode.props){
+            for(const key in vnode.props){
+              console.log(key,'key')
+              patchProp(el,key,null,vnode.props[key])
+            }
+          }
+          insert(el,container,null)
+
+
+      }
+
+      function render(vnode,container){
+          if(vnode){
+            patch(container._vnode,vnode,container)
+          } else {
+            if(container._vnode){
+              // container.innerHTML = ''
+              unmount(container._vnode)
+            }
+          }
+          container._vnode = vnode
+        }
+        return {
+          render
+        }
+    }
+
+    
+    function shouldSetAsProp(el,key,nextValue){
+      if(key === 'form' && el.tagName === 'INPUT'){
+        return false
+      }
+      return key in el
+    }
+
+
+    // 将通用的操作
+    const renderer = createRenderer({
+      createElement(type){
+        console.log("创建元素"+type)
+        return document.createElement(type)
+      },
+      insert(child,parent,anchor){
+        console.log(`${child}插入到${parent}的${anchor}前`)
+         parent.insertBefore(child,anchor)
+      },
+      remove(child){
+        console.log(`${child}被移除`)
+        child.parent.removeChild(child)
+      },
+      unmount(vnode){
+        console.log(`${vnode}被卸载`)
+        if(vnode.type === 'Fragment'){
+          vnode.children.forEach(child => {
+            unmount(child)
+          })
+        } else if(typeof vnode.type === 'object'){
+          // should keep alive 标识组件是否应该被keepAlive
+          if(vnode.shouldKeepAlive){
+            vnode.component.ctx.deactivate(vnode)
+          } else {
+            unmount(vnode.component.subTree)
+          }
+          return
+        } 
+        const parent = vnode.el.parentNode
+        if(parent){
+          parent.removeChild(vnode.el)
+        }
+      },
+      setElementText(el,text){
+        console.log(`${el}的文本被设置为${text}`)
+        el.textContent = text
+      },
+      patchProp(el,key,preValue,nextValue){
+        console.log(`el:${el},key:${key},preValue:${preValue},nextValue:${nextValue}`)
+        if(/^on/.test(key)){
+          let invokers = el._vei || (el._vei = {}) 
+          let invoker = invokers[key]
+          const eventName = key.slice(2).toLowerCase()
+          if(nextValue){
+            if(!invoker){
+              // 如果没有invoker，则将一个伪造的invoker赋值给el._vei中
+              // vei是vue event invoker的缩写
+
+              invoker = el._vei[key] = (e) => {
+                // 如果事件发生的时间小于绑定事件的时间，则不执行
+                if(e.timeStamp <invoker.attached){
+                  return
+                }
+                // 当伪造事件处理函数执行时，会调用真正的事件处理函数
+                if(Array.isArray(invoker.value)){
+                  invoker.value.forEach(fn => {
+                    fn(e)
+                  })
+                } else {
+                  invoker.value(e)
+                }
+                
+              }
+              // 将真正的事件处理函数赋值给伪造的事件处理函数
+              invoker.value = nextValue
+              // 添加 invoker.attached 属性，用于存储事件绑定的时间
+              invoker.attached = performance.now()
+              // 将伪造的事件处理函数绑定到元素上
+              el.addEventListener(eventName,invoker)
+            } else {
+              invoker.value = nextValue
+            }
+          } else if(invoker){
+            // 如果nextValue不存在，则移除事件处理函数
+            el.removeEventListener(eventName,invoker)
+            el._vei = null
+          }
+
+          // if(preValue){
+          //   el.removeEventListener(eventName,preValue)
+          // }
+          // el.addEventListener(eventName,nextValue)
+        } else if(key === 'class'){
+          el.className = nextValue
+        } else if(shouldSetAsProp(el,key,nextValue)){
+          const type = typeof el[key]
+          if(type === 'boolean' && nextValue === ''){
+            el[key] = true
+          } else {
+            el[key] = nextValue
+          }
+        } else {
+          el.setAttribute(key,nextValue)
+        }
       }
     })
-}
-}
 
-const Teleport = {
-   __isTeleport:true,
-   proess(n1,n2,container,anchor, internals){
-     const {patch,move,unmout} = internals
-     if(!n1){
-       const placeholder = (n2.el = document.createComment('teleport start'))
-       const mainAnchor = (n2.anchor = document.createComment('teleport end'))
-       insert(placeholder,container,anchor)
-       insert(mainAnchor,container,anchor)
-       n2.anchor = mainAnchor
-       move(n2,container,anchor)
-      }else{
-        n2.el = n1.el
-        n2.anchor = n1.anchor
-        n2.component = n1.component
-        move(n2,container,anchor)
+
+    effect(() =>{
+      
+    function handers(data,value){
+      console.log('change11',data,value)
+    }
+    const MyComponent = {
+      name: 'MyComponent',
+      data(){
+        return {
+          count: 'hello word 生命周期'
+        }
+      },
+      props:{
+        title:String,
+      },
+      setup(props,{ emit }){
+        function onMounted(fn){
+          if(currentInstance){
+            currentInstance.mounted.push(fn)
+          }else {
+            console.warn('onMounted只能在setup函数中使用')
+          }
+        }
+        const count1 = ref('我是setup中的数据')
+        onMounted(() => {
+          effect(() => {
+            count1.value = '我是onMounted中的数据'
+          })
+          console.log('组件挂载完成')
+        })
+        
+        return { count1 }
+      },
+      render(){
+        return {
+            type:'div',
+            children: `我是组件${this.count1.value}`
+          }
+      } 
+    }
+
+    const keepAlive = {
+      name:'keepAlive',
+      __isKeepAlive:true,
+      data(){
+        return {
+        }
+      },
+      setup(props,{ slots }){
+        // 创建一个缓存对象
+        // Key: vnode.key
+        // value: vnode
+        const cache = new Map()
+        const instance = currentInstance
+        const { move,createElement } = instance
+        const storagetContainer = document.createElement('div')
+        // 这两个函数会在渲染器中被调用
+        instance._deActivate = (vnode) => {
+          const key = vnode.key == null ? vnode.type : vnode.key
+          cache.set(key,vnode)
+        }
+        instance._activate = (vnode) => {
+          const key = vnode.key == null ? vnode.type : vnode.key
+          if(cache.has(key)){
+            vnode.el = cache.get(key)
+            cache.delete(key)
+          }
+        }
+     
+        return () => {
+          const rawVnode = slots.default()
+          if(typeof rawVnode.type !== 'object'){
+            return rawVnode
+          }
+          const cachedVnode = cache.get(rawVnode.type)
+          if(cachedVnode){
+            rawVnode.component = cachedVnode.component
+            rawVnode.keepAlive = true
+          } else {
+            cache.set(rawVnode.type,rawVnode)
+          }
+          rawVnode.shouldkeepAlive = true
+          rawVnode.keepAliveInstance = instance
+          return rawVnode
+        }
       }
-   }
-}
+    }
 
+    const Teleport = {
+      name:'Teleport',
+      __isTeleport:true,
+      props:{
+        to:String
+      },
+      process(n1,n2,container,anchor,internals){
+        const { patch,move,patchChildren } = internals
+        if(!n1){
+          // 挂载
+          console.log(n2.props)
+          const target = typeof n2.props.to === 'string' ? document.querySelector(n2.props.to) : n2.props.to
+          n2.children.forEach(child => {
+            patch(null,child,target,anchor)
+          })
+        } else {
+          // 更新
+          patchChildren(n1,n2,container)
+          if(n2.props.to !== n1.props.to){
+            const newTarget = typeof n2.props.to === 'string' ? document.querySelector(n2.props.to) : n2.props.to
+            n2.children.forEach(child => {
+              move(child,newTarget)
+            })
+          }
+        }
+      }
+    }
 
+    const vnode = {
+      type:Teleport,
+      props:{
+        to:'#to'
+      },
+      children:[
+        {type:'div',children:'我是Teleport组件'},
+        {type:'p',children:'我是content组件'},
+      ]  
+    }
+    const vnode1 = {
+      type:Teleport,
+      props:{
+        to:'#form'
+      },
+      children:[
+        {type:'div',children:'我是Teleport组件'},
+        {type:'p',children:'我是content组件'},
+      ]  
+    }
+    renderer.render(vnode,document.querySelector('#app'))
+    
+    setTimeout(() => {
+      renderer.render(vnode1,document.querySelector('#app'))
+    },2000)
 
-</script>
+   })
+
+ 
+
+  //  // 创建一个渲染器
+  //  const render = createRenderer()
+  //  // 调用render函数渲染该vnode
+  //  renderer.render(vnode,document.querySelector('#app'))
+  
+  </script>
+</body>
 </html>
