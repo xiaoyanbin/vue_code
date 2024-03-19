@@ -44,7 +44,7 @@
     }
 
    function createRenderer(options){
-      const {createElement,insert,remove,setElementText,patchProp} = options
+      const {createElement,insert,remove,unmount,setElementText,patchProp} = options
       function patch(n1,n2,container,anchor){
           if(n1 && n1.type !==n2.type){
             // n1存在，且类型不同，直接替换
@@ -145,7 +145,7 @@
       function mountComponent(vnode,container,anchor){
         const componentOptions = vnode.type
         console.log('组件',componentOptions)
-        const { render,data, setup,  props:propsOption, beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
+        const { render:renders,data, setup,  props:propsOption, beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
         beforeCreate && beforeCreate()
         const state = reactive(data())
          // 调用resolveProps函数，将props转换为响应式对象
@@ -184,7 +184,7 @@
 
 
         let setupState = null
-
+        let render = renders
         if(typeof setupResult === 'function'){
           render = setupResult
         } else {
@@ -380,7 +380,7 @@
         return document.createElement(type)
       },
       insert(child,parent,anchor){
-        console.log(`${child}插入到${parent}的${anchor}前`)
+        console.log(`${child.outerHTML}插入到${parent.outerHTML}的${anchor}前`)
          parent.insertBefore(child,anchor)
       },
       remove(child){
@@ -502,7 +502,7 @@
             loaded.value = true
           })
           const fn = () => { 
-            return loaded.value ?{ type: InnerComp} : {type:'Text',children:'loading...'}
+            return loaded.value ? { type: InnerComp} : {type:'Text',children:'loading...'}
           }
           console.log(fn,'fn')
           return fn
@@ -510,11 +510,14 @@
       }
     }
 
-   
-    const asyncComponent =  defineAsyncComponent(() => Promise.resolve(MyComponent))
-    
-    console.log({type:asyncComponent},'asyncComponent')
-
+    // 建立异步组件
+    const asyncComponent =  defineAsyncComponent(() => {
+         return new Promise((resolve,reject) => {
+           setTimeout(() => {
+             resolve(MyComponent)
+           },2000)
+         })
+    })
     renderer.render({type:asyncComponent},document.querySelector('#app'))
     
    })

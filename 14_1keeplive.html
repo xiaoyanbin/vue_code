@@ -143,7 +143,7 @@
 
       function mountComponent(vnode,container,anchor){
         const componentOptions = vnode.type
-        const { render,data, setup,  props:propsOption, beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
+        const { render:renders,data, setup,  props:propsOption, beforeCreate, created,beforeMount, mounted, beforeUpdate, updated } = componentOptions
         beforeCreate && beforeCreate()
         const state = reactive(data())
          // 调用resolveProps函数，将props转换为响应式对象
@@ -178,17 +178,14 @@
         // 处理setup
         const setupResult = setup(shallowReadonly(instance.props),setupContext)
         setCurrentInstance(null)
-         
-
-
         let setupState = null
-
+        let render = renders
+         console.log(setupResult,'setupResult',instance)
         if(typeof setupResult === 'function'){
           render = setupResult
         } else {
           setupState = setupResult
         }
-        console.log(setupState,'setupState')
         vnode.component = instance
         
         // 创建渲染响应式上下文
@@ -207,9 +204,7 @@
             }
             else {
               return undefined
-            }
-            
-          
+            }   
           },
           set(target,key,value,receiver){
             const { props, state } = target
@@ -538,10 +533,11 @@
             cache.delete(key)
           }
         }
+     
         return () => {
           const rawVnode = slots.default()
           if(typeof rawVnode.type !== 'object'){
-            return rawNode
+            return rawVnode
           }
           const cachedVnode = cache.get(rawVnode.type)
           if(cachedVnode){
@@ -554,17 +550,6 @@
           rawVnode.keepAliveInstance = instance
           return rawVnode
         }
-      },
-      render(){
-        const vnode = this.$slots.default()
-        const { cache, slots } = this
-        const key = vnode.key == null ? vnode.type : vnode.key
-        if(cache.has(key)){
-          vnode.el = cache.get(key)
-        } else {
-          cache.set(key,vnode.el)
-        }
-        return vnode.el
       }
     }
 
@@ -572,20 +557,16 @@
 
     const vnode = {
       type:keepAlive,
-      render(){
-        return {
-          type:MyComponent,
-          props:{
-            title:'A big Title',
-            other:'this.val'
-          },
-          render(){
-            return {
-                type:'div',
-                children: `我是组件`
-            }
-          } 
-        } 
+      children:{
+        default(){
+          return {
+            type:MyComponent,
+            props:{
+              title:'我是props'
+            },
+
+          }
+        }
        }
     }
 
