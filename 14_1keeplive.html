@@ -43,7 +43,7 @@
     }
 
    function createRenderer(options){
-      const {createElement,insert,remove,setElementText,patchProp} = options
+      const {createElement,insert,remove,setElementText,patchProp,unmount} = options
       function patch(n1,n2,container,anchor){
           if(n1 && n1.type !==n2.type){
             // n1存在，且类型不同，直接替换
