@@ -477,7 +477,7 @@
               },
               {
                 type:'footer',
-                children:[this.$slots.footer()]
+                children:[this.$slots.footer(this.count1.value)]
             }]
           }
       } 
@@ -502,10 +502,10 @@
             children:'我是内容'
           }
         },
-        footer(){
+        footer(data){
           return {
             type:'h2',
-            children:'我是底部'
+            children:'我是底部'+data
           }
         }
       }
