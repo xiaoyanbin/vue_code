@@ -114,11 +114,11 @@
         return document.createElement(type)
       },
       insert(child,parent,anchor){
-        console.log(`${child}插入到${parent}的${anchor}前`)
+        console.log(`${child.outerHTML} ==插入到 ==${parent.outerHTML}的${anchor}前`)
          parent.insertBefore(child,anchor)
       },
       remove(child){
-        console.log(`${child}被移除`)
+        console.log(`${child.outerHTML}被移除`)
         child.parent.removeChild(child)
       },
       unmount(vnode){
