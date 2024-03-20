@@ -1,7 +1,7 @@
 # vue设计与实现源码
 
 #### Description
-vue设计与实现源码，文件名序号前缀和书同步，持续更新中。。。
+vue设计与实现源码，文件名序号前缀和书同步，每个文件都可以单独运行，持续更新中。。。
 
 #### Software Architecture
 Software architecture description
