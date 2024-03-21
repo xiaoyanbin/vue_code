@@ -6,73 +6,80 @@
   <title>Document</title>
 </head>
 <body>
-  <script>
-    function createRenderer(){
-      function render(vnode,container){
-        if(vnode === null){
-          container.innerHTML = ''
-        }else if(Array.isArray(vnode)){
-          for(let i = 0; i < vnode.length; i++){
-            render(vnode[i],container)
-          }
-        }else if(typeof vnode === 'object'){
-          container.appendChild(vnode)
-        }else{
-          container.textContent = vnode
+  <div id="app"></div>
+<div style="font-size: 14px; position:absolute;bottom:20px; left:10px;"> 
+  源代码地址：https://gitee.com/xiao_yan_bin/vue_code<br/>
+  github: https://github.com/xiaoyanbin/vue_code<br/>
+  vue设计与实现，持续更新，建议点赞收藏，有问题可以在评论区留言
+</div>
+  
+</body>
+<script>
+  function createRenderer(){
+    function render(vnode,container){
+      if(vnode === null){
+        container.innerHTML = ''
+      }else if(Array.isArray(vnode)){
+        for(let i = 0; i < vnode.length; i++){
+          render(vnode[i],container)
         }
-      }
-      function hydrate(){
-
-        
-      }
-      return {
-        render,
-        hydrate
+      }else if(typeof vnode === 'object'){
+        container.appendChild(vnode)
+      }else{
+        container.textContent = vnode
       }
     }
+    function hydrate(){
 
-    function createRenderer(){
-      function patch(n1,n2,container){
-        if(n1 === null){
-          mount(n2,container)
+      
+    }
+    return {
+      render,
+      hydrate
+    }
+  }
+
+  function createRenderer(){
+    function patch(n1,n2,container){
+      if(n1 === null){
+        mount(n2,container)
+      }else{
+        if(n2 === null){
+          container.removeChild(n1.el)
         }else{
-          if(n2 === null){
+          if(n1.type !== n2.type){
             container.removeChild(n1.el)
+            mount(n2,container)
           }else{
-            if(n1.type !== n2.type){
-              container.removeChild(n1.el)
-              mount(n2,container)
+            const el = (n2.el = n1.el)
+            if(typeof n2.children === 'string'){
+              if(n1.children !== n2.children){
+                el.textContent = n2.children
+              }
             }else{
-              const el = (n2.el = n1.el)
-              if(typeof n2.children === 'string'){
-                if(n1.children !== n2.children){
-                  el.textContent = n2.children
-                }
-              }else{
-                for(let i = 0; i < n2.children.length; i++){
-                  patch(n1.children[i],n2.children[i],el)
-                }
+              for(let i = 0; i < n2.children.length; i++){
+                patch(n1.children[i],n2.children[i],el)
               }
             }
           }
         }
       }
-      function render(vnode,container){
-        if(vnode) {
-          patch(container._vnode,vnode,container)
-        } else {
-          if(container._vnode) {
-            container.innerHTML = null
-          }
-        }
-        container._vnode = vnode
-      }
-     
-      return {
-        render,
-        hydrate
-      }
     }
-  </script>
-</body>
+    function render(vnode,container){
+      if(vnode) {
+        patch(container._vnode,vnode,container)
+      } else {
+        if(container._vnode) {
+          container.innerHTML = null
+        }
+      }
+      container._vnode = vnode
+    }
+   
+    return {
+      render,
+      hydrate
+    }
+  }
+</script>
 </html>

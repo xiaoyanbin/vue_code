@@ -3,12 +3,16 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
+  <title>文件保存</title>
 </head>
 <body>
-  
+ 
 <div id="app"></div>
-
+<div style="font-size: 14px; position:absolute;bottom:20px; left:10px;"> 
+  源代码地址：https://gitee.com/xiao_yan_bin/vue_code<br/>
+  github: https://github.com/xiaoyanbin/vue_code<br/>
+  vue设计与实现，持续更新，建议点赞收藏，有问题可以在评论区留言
+</div>
 </body>
 <script lang="ts">
 
@@ -44,7 +48,8 @@ function effect(fn){
 
 // effect 传入一个回调函数,响应系统不依赖副作用函数的名称
 effect(() =>{  
-    document.body.innerText = obj.text
+  
+    document.getElementById('app').innerHTML = obj.text
 })
 
 console.log('读取的值：'+obj.text)

@@ -29,26 +29,34 @@ function effect(){
 const bucket = new Set() //存储effect函数的容器
 
 const data = {text: 'hello world'}
+let num = 0
+
 const obj = new Proxy(data, {
   get(target, key){
+
+    console.log('触发get key:', key,'==>', target[key])
     bucket.add(effect1)
-    return Reflect.get(target, key)
+    return Reflect.get(target, key) //返回target对象的key属性值
   },
   set(target, key, value){
-
+    console.log('set', key, value)
     const result = Reflect.set(target, key, value)
     bucket.forEach(effect => effect())
     return result
   }
 })
 function effect1(){
+  console.log(`effect1执行了${++num}次`)
   document.body.innerText = obj.text
 }
 
-effect1() //执行effect1函数
+console.log('读取的值'+obj.text)
+// effect1() //执行effect1函数
 setTimeout(() => {
   obj.text = 'hello 我是vue3'
 }, 1000)
+
+// 副作用函数和代码存在强耦合，我们希望副作用函数不依赖于effect1函数的名称
 
 </script>
 </html>
