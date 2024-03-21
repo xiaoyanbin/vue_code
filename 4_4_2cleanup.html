@@ -32,7 +32,6 @@ const bucket = new WeakMap()
 let activeEffect
 let num = 0
 let n = 0
-let h = 0
 const data = {ok: true, text: 'hello world'}
 // 1.创建一个响应式对象
 const obj = new Proxy(data, {
@@ -52,7 +51,9 @@ function effect(fn){
   const effectFn = () => {
     // 调用cleanup函数完成清除工作,清楚前面的副作用函数 activeEffect.deps
     cleanup(effectFn)
+    console.log('effectFndeps: ',effectFn.deps)
     activeEffect = effectFn
+    console.log('执行副作用函数effectFn: ',n)
     fn()
   }
   effectFn.deps = []
@@ -60,7 +61,7 @@ function effect(fn){
 }
 function cleanup(effect){
   n++
-  console.log('清空之前n: ',n)
+  console.log('执行清空函数cleanup: ',n)
   effect.deps.forEach(dep => {
     // deps 是依赖集合
     dep.delete(effect)
@@ -70,8 +71,6 @@ function cleanup(effect){
 }
 // effect 传入一个回调函数,响应系统不依赖副作用函数的名称
 effect(() =>{  
-    h++
-    console.log('effect执行次数', h)
     document.body.innerText = obj.ok ? obj.text :'not'
 })
 
@@ -80,12 +79,13 @@ effect(() =>{
 // obj.text = 'hello word 第二次设置'
 // 
 setTimeout(() => {
+  obj.ok = false
   obj.text = 'hello word 第三次设置'
-}, 1000)
+}, 2000)
 
 function track(target, key){
   num++
-  console.log('track执行数和key==='+num+key)
+  console.log(`track收集key：${key}===> ${target[key]} 执行次数 ${num}`)
   if(!activeEffect) return
   let depsMap = bucket.get(target)
   if(!depsMap){
@@ -101,7 +101,7 @@ function track(target, key){
   // 将其添加到 activeEffect.deps 数组中 ,储存所有包含当前副作用函数的依赖集合
   activeEffect.deps.push(deps)
 
-  console.log(activeEffect.deps,num)
+  console.log(`第${num}次收集副作用函数`,activeEffect.deps)
 }
 function trigger(target,key){
   const depsMap = bucket.get(target)
@@ -109,6 +109,7 @@ function trigger(target,key){
   const effects = depsMap.get(key)  
   const effectsToRun = new Set(effects) // 新增
   effectsToRun.forEach(effect => effect()) // 新增
+  console.log(activeEffect)
   // effects && effects.forEach(effect => effect()) // 删除
   
 }

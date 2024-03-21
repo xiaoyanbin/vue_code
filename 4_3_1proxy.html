@@ -18,6 +18,7 @@
 
 // 创建一个收集副作用的容器
 const bucket = new Set()
+// 保存当前要执行的副作用函数
 let activeEffect = null
 
 const data = {text: 'hello world'}
@@ -48,7 +49,6 @@ function effect(fn){
 
 // effect 传入一个回调函数,响应系统不依赖副作用函数的名称
 effect(() =>{  
-  
     document.getElementById('app').innerHTML = obj.text
 })
 
