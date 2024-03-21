@@ -6,12 +6,9 @@
   <title>Document</title>
 </head>
 <body>
+4_4_2cleanup.html 可执行
+
 <div id="app"></div>
-<div style="font-size: 14px; position:absolute;bottom:20px; left:10px;"> 
-  源代码地址：https://gitee.com/xiao_yan_bin/vue_code<br/>
-  github: https://github.com/xiaoyanbin/vue_code<br/>
-  vue设计与实现，持续更新，建议点赞收藏，有问题可以在评论区留言
-</div>
 </body>
 <script>
 
@@ -113,14 +110,14 @@ newSet.forEach(item => {
   console.log('遍历中')
 })
 
-const effectsToRun = new Set(effects)
-effectsToRun.forEach(effect => {
-  if(effect.scheduler){
-    effect.scheduler()
-  }else{
-    effect()
-  }
-})
+// const effectsToRun = new Set(effects)
+// effectsToRun.forEach(effect => {
+//   if(effect.scheduler){
+//     effect.scheduler()
+//   }else{
+//     effect()
+//   }
+// })
 
 
 

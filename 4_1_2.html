@@ -10,22 +10,6 @@
 </body>
 <script lang="ts">
 
-
-// 响应式数据
-const obj1 = {text:'hello world'}
-
-
-obj1.text = 'hello vue3' //修改obj.text的值，同时希望副作用函数会重新执行
-
-// 副作用函数，effect函数的执行可以直接或间接的影响其他函数的执行，我们就说effect产生了副作用 
-function effect(){
-  document.body.innerText = obj1.text
-}
-
-
-
-
-
 const bucket = new Set() //存储effect函数的容器
 
 const data = {text: 'hello world'}

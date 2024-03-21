@@ -82,7 +82,7 @@ effect(() =>{
     num++
     // 当调用effect的时候，我们需要把fn放到bucket中
     console.log('effect'+num)
-    document.body.innerText = obj.text
+    document.getElementById('app').innerHTML = obj.text
 })
 
 console.log('读取的值：'+obj.text)
