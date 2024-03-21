@@ -66,15 +66,8 @@ const obj = new Proxy(data, {
     return Reflect.get(target, key)
   },
   set(target, key, value){
-    
     Reflect.set(target, key, value)
-    // const depsMap = bucket.get(target)
-    // if(!depsMap) return
-    // const effects = depsMap.get(key)
-    // // 执行副作用函数
-    // effects && effects.forEach(fn => fn())
-    // return true
-     trigger(target,key)
+    trigger(target,key)
   }
 })
 // 副作用函数
@@ -92,7 +85,6 @@ effect(() =>{
     document.body.innerText = obj.text
 })
 
-
 console.log('读取的值：'+obj.text)
 
 // 赋值的时候是先get再set
@@ -101,7 +93,6 @@ obj.text = 'hello word 第二次设置'
 setTimeout(() => {
   obj.Notext = 'hello word 第三次设置'
 }, 1000)
-
 
 function track(target, key){
   if(!activeEffect) return
@@ -124,14 +115,7 @@ function trigger(target,key){
   const effectsToRun = new Set()
   effects && effects.forEach(effect => {
     effect()
-    // if(effect !== activeEffect){
-    //   effectsToRun.add(effect)
-    // }
-  })
-  // effectsToRun.forEach(effect => {
-  //   effect()
-  // })
-  
+  })  
 }
 
 
