@@ -101,12 +101,13 @@ function track(target, key){
   // 将其添加到 activeEffect.deps 数组中 ,储存所有包含当前副作用函数的依赖集合
   activeEffect.deps.push(deps)
 
-  console.log(`第${num}次收集副作用函数`,activeEffect.deps)
+  console.log(`第${num}次收集副作用函数activeEffect.deps`,activeEffect.deps)
 }
 function trigger(target,key){
   const depsMap = bucket.get(target)
   if(!depsMap) return
-  const effects = depsMap.get(key)  
+  const effects = depsMap.get(key) 
+  // console.log(effects.keys(data=>data),'keys') 
   const effectsToRun = new Set(effects) // 新增
   effectsToRun.forEach(effect => effect()) // 新增
   console.log(activeEffect)
